@@ -13,6 +13,20 @@ def normalizar(texto):
         if unicodedata.category(c) != 'Mn'
     )
 
+def extraer_nombres_aprobados(paginas):
+    nombres = []
+    patron_nombre = re.compile(r'^([A-ZÑÁÉÍÓÚÜ ]{10,})$')  # al menos 10 letras mayúsculas seguidas (para evitar palabras sueltas)
+
+    for pagina in paginas:
+        lineas = pagina.split('\n')
+        for linea in lineas:
+            linea_normal = normalizar(linea).upper().strip()
+
+            if patron_nombre.match(linea_normal):
+                nombres.append(linea_normal)
+
+    return nombres
+
 def extraer_listado(paginas):
     cedulas = []
     for pagina in paginas:
@@ -42,34 +56,44 @@ def extraer_certificados(paginas):
 
     return certificados
 
-def comparar(cedulas, certificados):
+def comparar(listado, certificados):
     resultados = []
     resultados.append(f"{'DOCUMENTO':<20} {'NOMBRE CERTIFICADO':<40} {'RESULTADO':<50}")
     resultados.append("-" * 110)
 
     cert_dict = {doc: nombre for doc, nombre in certificados}
 
-    for doc in cedulas:
+    for item in listado:
+        doc, nombre_listado = item
+        doc = str(doc)  # ← por seguridad
+        nombre_listado = str(nombre_listado)
+
         if doc in cert_dict:
-            nombre = cert_dict[doc]
             estado = "✅ OK"
+            nombre_final = cert_dict[doc]
         else:
-            nombre = ""
             estado = "❌ SIN CERTIFICADO"
-        resultados.append(f"{doc:<20} {nombre:<40} {estado:<50}")
+            nombre_final = nombre_listado
+
+        resultados.append(f"{doc:<20} {nombre_final:<40} {estado:<50}")
 
     return resultados
 
 def procesar_pdf(ruta_pdf):
     paginas = extraer_texto_pdf(ruta_pdf)
-    cedulas = extraer_listado(paginas[:1])  # está todo en la primera página
+
+    cedulas = extraer_listado(paginas[:1])  # las cédulas sí están en la primera página
+    nombres = extraer_nombres_aprobados(paginas)  # nuevos nombres robustos
     certificados = extraer_certificados(paginas)
 
-    if not cedulas:
-        return "⚠️ No se encontró listado válido."
-    if not certificados:
-        return "⚠️ No se encontraron certificados."
+    if not cedulas or not nombres:
+        return "⚠️ No se encontraron todos los datos del listado."
+    
+    # Emparejar cédula con nombre por índice
+    listado = []
+    for i in range(min(len(cedulas), len(nombres))):
+        listado.append((cedulas[i], nombres[i]))  # ✅ aquí cedulas[i] y nombres[i] deben ser strings
 
-    resultados = comparar(cedulas, certificados)
+    resultados = comparar(listado, certificados)
     return "\n".join(resultados)
 
