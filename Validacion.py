@@ -58,14 +58,14 @@ def extraer_certificados(paginas):
 
 def comparar(listado, certificados):
     resultados = []
-    resultados.append(f"{'DOCUMENTO':<20} {'NOMBRE CERTIFICADO':<40} {'RESULTADO':<50}")
-    resultados.append("-" * 110)
+    resultados.append(f"{'#':<4} {'DOCUMENTO':<20} {'NOMBRE CERTIFICADO':<40} {'RESULTADO':<50}")
+    resultados.append("-" * 120)
 
     cert_dict = {doc: nombre for doc, nombre in certificados}
 
-    for item in listado:
+    for idx, item in enumerate(listado, start=1):
         doc, nombre_listado = item
-        doc = str(doc)  # ← por seguridad
+        doc = str(doc)
         nombre_listado = str(nombre_listado)
 
         if doc in cert_dict:
@@ -75,7 +75,7 @@ def comparar(listado, certificados):
             estado = "❌ SIN CERTIFICADO"
             nombre_final = nombre_listado
 
-        resultados.append(f"{doc:<20} {nombre_final:<40} {estado:<50}")
+        resultados.append(f"{idx:<4} {doc:<20} {nombre_final:<40} {estado:<50}")
 
     return resultados
 
