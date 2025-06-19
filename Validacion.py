@@ -79,20 +79,22 @@ def comparar(listado, certificados):
 
     return resultados
 
-def procesar_pdf(ruta_pdf):
+def procesar_pdf(ruta_pdf, pagina_inicio, pagina_fin):
     paginas = extraer_texto_pdf(ruta_pdf)
 
-    cedulas = extraer_listado(paginas[:1])  # las cédulas sí están en la primera página
-    nombres = extraer_nombres_aprobados(paginas)  # nuevos nombres robustos
+    # Recortar el rango solicitado (recordar que slice excluye el final)
+    paginas_listado = paginas[pagina_inicio:pagina_fin]
+
+    cedulas = extraer_listado(paginas_listado)
+    nombres = extraer_nombres_aprobados(paginas_listado)
     certificados = extraer_certificados(paginas)
 
     if not cedulas or not nombres:
         return "⚠️ No se encontraron todos los datos del listado."
-    
-    # Emparejar cédula con nombre por índice
+
     listado = []
     for i in range(min(len(cedulas), len(nombres))):
-        listado.append((cedulas[i], nombres[i]))  # ✅ aquí cedulas[i] y nombres[i] deben ser strings
+        listado.append((cedulas[i], nombres[i]))
 
     resultados = comparar(listado, certificados)
     return "\n".join(resultados)
