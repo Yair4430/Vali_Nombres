@@ -1,8 +1,7 @@
 import fitz
 import re
 import unicodedata
-from thefuzz import fuzz  # Comparación difusa
-# from spellchecker import SpellChecker  # <- Comentado, no es útil para nombres propios
+from thefuzz import fuzz
 
 def extraer_texto_pdf(ruta_pdf):
     doc = fitz.open(ruta_pdf)
@@ -15,40 +14,75 @@ def normalizar(texto):
     )
     return re.sub(r'\s+', ' ', texto).strip().upper()
 
-def extraer_nombres_aprobados(paginas):
+def extraer_listado(paginas):
+    documentos = []
     nombres = []
-    patron_cedula = re.compile(r"(CC|TI)\s+(\d{7,})")
+    listado = []
+
+    patron_documento = re.compile(r"(?:\d+\.\s*)?CC[-\s]?(\d{5,})")
+
+    # 1. Extraer documentos válidos
+    for pagina in paginas:
+        for linea in pagina.split('\n'):
+            linea_norm = normalizar(linea)
+            match = patron_documento.search(linea_norm)
+            if match:
+                documentos.append(f"CC {match.group(1).strip()}")
+
+    # 2. Extraer nombres: buscar bloque con nombres (después de "JUICIO DE EVALUACION")
+    recolectar = False
+    for linea in paginas[0].split('\n'):
+        linea_norm = normalizar(linea.strip())
+
+        if "JUICIO DE EVALUACION" in linea_norm:
+            recolectar = True
+            continue
+
+        if recolectar:
+            if (
+                len(linea_norm.split()) >= 2 and
+                linea_norm.isupper() and
+                not re.search(r"\d", linea_norm) and
+                not any(palabra in linea_norm for palabra in [
+                    "APROBADO", "FIRMA", "COORDINADOR", "SENA", "INSTRUCTOR", "JUICIO DE", 
+                    "TOTAL", "NOTA", "OBSERVACIONES", "CERTIFICADOS", "RESPONSABLE", "NO. HORAS",
+                    "PROGRAMA", "EVALUACION", "CENTRO", "PRODUCCION", "TOLIMA", "IBAGUE", "EN EJECUCION", "CURSOS ESPECIALES"
+                ])
+            ):
+                nombres.append(linea_norm)
+
+    # 3. Emparejar documentos y nombres por orden
+    for i in range(len(documentos)):
+        nombre = nombres[i] if i < len(nombres) else "NO ENCONTRADO"
+        listado.append((documentos[i], nombre))
+
+    return listado
+
+def extraer_por_bloques(paginas):
+    listado = []
+    patron_cedula = re.compile(r"^\s*\d+\.\s+(CC|TI)[-\s]?(\d{7,})")
     
     for pagina in paginas:
         lineas = pagina.split('\n')
-        for i, linea in enumerate(lineas):
-            linea_normal = normalizar(linea)
-            if patron_cedula.search(linea_normal):
-                # Buscar nombre en la línea siguiente o dos líneas después
-                for offset in range(1, 3):
-                    if i + offset < len(lineas):
-                        posible_nombre = normalizar(lineas[i + offset])
-                        if (len(posible_nombre.split()) >= 2 and 
-                            all(palabra.isalpha() for palabra in posible_nombre.split()) and 
-                            15 <= len(posible_nombre) <= 60):
-                            nombres.append(posible_nombre)
-                            break
-                else:
-                    nombres.append("NO ENCONTRADO")
-    return nombres
-
-def extraer_listado(paginas):
-    cedulas = []
-    for pagina in paginas:
-        lineas = pagina.split('\n')
-        for linea in lineas:
-            linea_normal = normalizar(linea)
-            match = re.search(r"(CC|TI)\s+(\d{7,})", linea_normal)
-            if match:
-                cedulas.append(f"{match.group(1)} {match.group(2)}")
-    if not cedulas:
-        print("⚠️ No se encontraron cédulas en las páginas.")
-    return cedulas
+        i = 0
+        while i < len(lineas):
+            linea = lineas[i]
+            match_cedula = patron_cedula.search(normalizar(linea))
+            if match_cedula:
+                doc = f"{match_cedula.group(1)} {match_cedula.group(2)}"
+                # Buscar nombre en las siguientes líneas
+                nombre = "NO ENCONTRADO"
+                for j in range(i+1, min(i+3, len(lineas))):  # Busca en las 2 líneas siguientes
+                    posible_nombre = normalizar(lineas[j])
+                    if (len(posible_nombre.split()) >= 2 and 
+                        all(p.isalpha() or p in ['Ñ', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ü'] 
+                            for p in posible_nombre.replace(' ', ''))):
+                        nombre = posible_nombre
+                        i = j  # Saltar las líneas ya procesadas
+                        break
+                listado.append((doc, nombre))
+            i += 1
+    return listado
 
 def extraer_certificados(paginas):
     certificados = []
@@ -65,13 +99,6 @@ def extraer_certificados(paginas):
             certificados.append((doc_limpio, nombre_limpio))
 
     return certificados
-
-# Comentado para evitar falsos positivos en nombres
-# def verificar_errores_ortograficos(nombre):
-#     spell = SpellChecker(language='es')
-#     palabras = nombre.split()
-#     errores = [palabra for palabra in palabras if palabra not in spell]
-#     return errores
 
 def comparar(listado, certificados):
     resultados = []
@@ -91,7 +118,10 @@ def comparar(listado, certificados):
 
             similarity = fuzz.ratio(nombre_final_norm, nombre_listado_norm)
 
-            if similarity < 100:
+            if nombre_listado_norm == "NO ENCONTRADO":
+                estado = "❌ NOMBRE NO ENCONTRADO"
+                errores_str = f"Nombre no extraído del listado"
+            elif similarity < 100:
                 estado = f"⚠️ SIMILITUD {similarity}%"
                 diferencias = f"Esperado: {nombre_final_norm}, Encontrado: {nombre_listado_norm}"
                 errores_str = diferencias
@@ -110,29 +140,13 @@ def procesar_pdf(ruta_pdf, pagina_inicio, pagina_fin):
     paginas = extraer_texto_pdf(ruta_pdf)
     paginas_listado = paginas[pagina_inicio:pagina_fin]
 
-    # Extraemos cédulas
-    cedulas = extraer_listado(paginas_listado)
-
-    # Extraemos nombres del bloque "APROBADO"
-    nombres = []
-    for pagina in paginas_listado:
-        lineas = pagina.split('\n')
-        for i in range(len(lineas) - 1):
-            nombre = normalizar(lineas[i])
-            siguiente = normalizar(lineas[i + 1])
-            if siguiente == "APROBADO":
-                nombres.append(nombre)
-
-    # Creamos listado uniendo por orden
-    listado = []
-    for i in range(min(len(cedulas), len(nombres))):
-        listado.append((cedulas[i], nombres[i]))
-
+    listado = extraer_listado(paginas_listado)
     certificados = extraer_certificados(paginas)
 
-    if not cedulas or not nombres:
-        return "⚠️ No se encontraron todos los datos del listado."
+    if not listado:
+        return "⚠️ No se encontraron datos del listado."
+    if not certificados:
+        return "⚠️ No se encontraron certificados en el PDF."
 
     resultados = comparar(listado, certificados)
     return "\n".join(resultados)
-

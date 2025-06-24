@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import Validacion
 
-ruta_pdf = None  # variable global para guardar la ruta
+ruta_pdf = None  
 
 def seleccionar_pdf():
     global ruta_pdf
@@ -17,9 +17,8 @@ def seleccionar_pdf():
             fg="#27ae60", 
             font=("Arial", 10, "bold")
         )
-        frame_inputs.pack(pady=10)  # Reducido de 15 a 10
-        boton_validar.pack(pady=8)   # Reducido de 15 a 8
-
+        frame_inputs.pack(pady=10)  
+        boton_validar.pack(pady=8)   
 def guardar_resultados(resultado):
     """Función para guardar los resultados en un archivo txt"""
     try:
