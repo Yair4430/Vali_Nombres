@@ -46,7 +46,8 @@ def extraer_listado(paginas):
                 not any(palabra in linea_norm for palabra in [
                     "APROBADO", "FIRMA", "COORDINADOR", "SENA", "INSTRUCTOR", "JUICIO DE", 
                     "TOTAL", "NOTA", "OBSERVACIONES", "CERTIFICADOS", "RESPONSABLE", "NO. HORAS",
-                    "PROGRAMA", "EVALUACION", "CENTRO", "PRODUCCION", "TOLIMA", "IBAGUE", "EN EJECUCION", "CURSOS ESPECIALES"
+                    "PROGRAMA", "EVALUACION", "CENTRO", "PRODUCCION", "TOLIMA", "IBAGUE", "EN EJECUCION", 
+                    "CURSOS ESPECIALES", "MARIAANGELICA", "OAPROBADO"
                 ])
             ):
                 nombres.append(linea_norm)
