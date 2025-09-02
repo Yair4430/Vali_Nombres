@@ -5,7 +5,7 @@ import re
 
 def extraer_datos_con_pdfplumber():
     """
-    Extrae documentos y nombres usando pdfplumber con enfoque más preciso
+    Extrae tipos, documentos y nombres usando pdfplumber
     """
     root = tk.Tk()
     root.withdraw()
@@ -15,8 +15,9 @@ def extraer_datos_con_pdfplumber():
         filetypes=[("PDF files", "*.pdf")]
     )
     if not archivo_pdf:
-        return [], [], archivo_pdf
+        return [], [], [], archivo_pdf
 
+    tipos = []
     documentos = []
     nombres = []
 
@@ -24,57 +25,41 @@ def extraer_datos_con_pdfplumber():
         for page in pdf.pages:
             texto = page.extract_text()
             
-            # Patrón más preciso para capturar todas las líneas de aprendices
-            # Busca: número. CC-documento NOMBRE COMPLETO POR CERTIFICAR APROBADO 80
-            patron = re.compile(r'(\d+)\.\s+CC[-\s]?(\d+)\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)\s+POR CERTIFICAR\s+APROBADO\s+80')
+            # Patrón para capturar: número. TIPO-documento NOMBRE COMPLETO POR CERTIFICAR APROBADO 80
+            # Ahora capturamos el tipo de documento (CC, CE, TI, PPT, etc.)
+            patron = re.compile(r'(\d+)\.\s+([A-Z]{2,4})[-\s]?(\d+)\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)\s+POR CERTIFICAR\s+APROBADO\s+80')
             
             matches = patron.findall(texto)
             for match in matches:
-                numero_linea = int(match[0])
-                documento = match[1]
-                nombre = match[2].strip()
+                tipo = match[1]  # CC, CE, TI, PPT, etc.
+                documento = match[2]
+                nombre = match[3].strip()
                 
+                tipos.append(tipo)
                 documentos.append(documento)
                 nombres.append(nombre)
-                
-                print(f"Línea {numero_linea}: {documento} - {nombre}")
     
-    return documentos, nombres, archivo_pdf
+    return tipos, documentos, nombres, archivo_pdf
 
 def main():
     # Extraer datos usando pdfplumber
-    documentos, nombres, archivo_pdf = extraer_datos_con_pdfplumber()
-    
-    print(f"\nDocumentos encontrados: {len(documentos)}")
-    print(f"Nombres encontrados: {len(nombres)}")
-    
-    # Mostrar lo que se encontró para depuración
-    print("Documentos:", documentos)
-    print("Nombres:", nombres)
-    
-    # Verificar si faltan algunos
-    if len(documentos) != 34:
-        print(f"⚠️  Faltan {34 - len(documentos)} aprendices por extraer")
+    tipos, documentos, nombres, archivo_pdf = extraer_datos_con_pdfplumber()
     
     # Unir resultados
     listado_final = []
-    min_length = min(len(documentos), len(nombres))
+    min_length = min(len(tipos), len(documentos), len(nombres))
     
     for i in range(min_length):
-        listado_final.append((documentos[i], nombres[i]))
+        listado_final.append((tipos[i], documentos[i], nombres[i]))
     
-    # Mostrar resultados finales
-    print("\n" + "="*80)
-    print("LISTADO FINAL DE APRENDICES")
-    print("="*80)
-    print(f"{'No.':<4} {'DOCUMENTO':<15} {'NOMBRES Y APELLIDOS':<50}")
+    # Mostrar la tabla con la nueva columna TIPO
+    print(f"{'No.':<4} {'TIPO':<6} {'DOCUMENTO':<15} {'NOMBRES Y APELLIDOS':<50}")
     print("-"*80)
     
-    for i, (doc, nom) in enumerate(listado_final, 1):
-        print(f"{i:<4} {doc:<15} {nom:<50}")
+    for i, (tipo, doc, nom) in enumerate(listado_final, 1):
+        print(f"{i:<4} {tipo:<6} {doc:<15} {nom:<50}")
     
     print(f"\nTotal: {len(listado_final)} aprendices")
-    print(f"Archivo procesado: {archivo_pdf}")
 
 if __name__ == "__main__":
     main()
