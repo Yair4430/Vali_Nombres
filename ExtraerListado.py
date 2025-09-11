@@ -10,9 +10,9 @@ def extraer_datos_con_pdfplumber(archivo_pdf, pagina_inicio, pagina_fin):
             if not texto:
                 continue
 
-            # Patrón ajustado para capturar el formato correcto
+            # Patrón ajustado para capturar cualquier número de horas
             patron = re.compile(
-                r'(\d+)\.\s+([A-Z0-9-]+)\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)\s+POR CERTIFICAR\s+APROBADO\s+40'
+                r'(\d+)\.\s+([A-Z0-9-]+)\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)\s+POR CERTIFICAR\s+APROBADO\s+(\d+)'
             )
 
             matches = patron.findall(texto)
@@ -20,6 +20,7 @@ def extraer_datos_con_pdfplumber(archivo_pdf, pagina_inicio, pagina_fin):
                 # El tipo y documento vienen juntos en el formato "CC-38231834" o "11-1033734512"
                 tipo_doc_completo = match[1]
                 nombre = match[2].strip()
+                horas = match[3]  # Capturamos las horas pero no las usamos
                 
                 # Separar tipo y documento
                 if '-' in tipo_doc_completo:
