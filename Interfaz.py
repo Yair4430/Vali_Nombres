@@ -1,13 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import pdfplumber
-
 from ExtraerListado import extraer_datos_con_pdfplumber
 from ExtraerCertificados import extraer_datos_certificados
 
-# ---------------- Lógica ----------------
 def ejecutar_proceso(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert, tree):
     try:
+        if not archivo_pdf:
+            messagebox.showerror("Error", "Seleccione un archivo PDF primero")
+            return
+            
         tipos_listado, docs_listado, nombres_listado = extraer_datos_con_pdfplumber(
             archivo_pdf, inicio_listado, fin_listado
         )
@@ -29,8 +31,10 @@ def ejecutar_proceso(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_
             else:
                 tree.insert("", "end", values=(i, tipo, doc, nombre, "❌", "❌", "No encontrado"))
 
+        messagebox.showinfo("Completado", f"Procesado: {len(docs_listado)} registros del listado\n{len(docs_cert)} certificados encontrados")
+
     except Exception as e:
-        messagebox.showerror("Error", f"Ocurrió un problema: {e}")
+        messagebox.showerror("Error", f"Ocurrió un problema: {str(e)}")
 
 def seleccionar_pdf(entry_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin):
     archivo_pdf = filedialog.askopenfilename(
@@ -41,23 +45,29 @@ def seleccionar_pdf(entry_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini
         entry_pdf.delete(0, tk.END)
         entry_pdf.insert(0, archivo_pdf)
 
-        with pdfplumber.open(archivo_pdf) as pdf:
-            total_paginas = len(pdf.pages)
-            for spin in (spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin):
-                spin.config(to=total_paginas)
+        try:
+            with pdfplumber.open(archivo_pdf) as pdf:
+                total_paginas = len(pdf.pages)
+                for spin in [spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin]:
+                    spin.config(to=total_paginas)
+                    spin.delete(0, tk.END)
+                    spin.insert(0, "1")
+                spin_listado_fin.delete(0, tk.END)
+                spin_listado_fin.insert(0, str(total_paginas))
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo abrir el PDF: {str(e)}")
 
-# ---------------- Interfaz ----------------
 def main():
     root = tk.Tk()
     root.title("Extractor Listado + Certificados")
-    root.geometry("1050x600")
+    root.geometry("1200x700")
     root.configure(bg="#f4f6f7")
 
     style = ttk.Style()
     style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"), background="#dfe6e9")
     style.configure("Treeview", font=("Segoe UI", 9), rowheight=25)
 
-    # ----- Sección Archivo -----
+    # Sección Archivo
     frame_sel = ttk.LabelFrame(root, text=" Selección de archivo ", padding=10)
     frame_sel.pack(pady=10, padx=10, fill="x")
 
@@ -68,23 +78,25 @@ def main():
                command=lambda: seleccionar_pdf(entry_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin)
     ).grid(row=0, column=2, padx=5)
 
-    # ----- Sección Rango de páginas -----
+    # Sección Rango de páginas
     frame_rangos = ttk.LabelFrame(root, text=" Rango de páginas ", padding=10)
     frame_rangos.pack(pady=5, padx=10, fill="x")
 
-    tk.Label(frame_rangos, text="Listado:", font=("Segoe UI", 10)).grid(row=0, column=0, sticky="e")
+    tk.Label(frame_rangos, text="Listado - Inicio:", font=("Segoe UI", 10)).grid(row=0, column=0, sticky="e", padx=5)
     spin_listado_ini = tk.Spinbox(frame_rangos, from_=1, to=1, width=5)
     spin_listado_ini.grid(row=0, column=1, padx=5)
+    tk.Label(frame_rangos, text="Fin:", font=("Segoe UI", 10)).grid(row=0, column=2, sticky="e", padx=5)
     spin_listado_fin = tk.Spinbox(frame_rangos, from_=1, to=1, width=5)
-    spin_listado_fin.grid(row=0, column=2, padx=5)
+    spin_listado_fin.grid(row=0, column=3, padx=5)
 
-    tk.Label(frame_rangos, text="Certificados:", font=("Segoe UI", 10)).grid(row=1, column=0, sticky="e")
+    tk.Label(frame_rangos, text="Certificados - Inicio:", font=("Segoe UI", 10)).grid(row=1, column=0, sticky="e", padx=5)
     spin_cert_ini = tk.Spinbox(frame_rangos, from_=1, to=1, width=5)
     spin_cert_ini.grid(row=1, column=1, padx=5)
+    tk.Label(frame_rangos, text="Fin:", font=("Segoe UI", 10)).grid(row=1, column=2, sticky="e", padx=5)
     spin_cert_fin = tk.Spinbox(frame_rangos, from_=1, to=1, width=5)
-    spin_cert_fin.grid(row=1, column=2, padx=5)
+    spin_cert_fin.grid(row=1, column=3, padx=5)
 
-    # ----- Botón procesar -----
+    # Botón procesar
     ttk.Button(root, text="▶ Procesar",
                command=lambda: ejecutar_proceso(
                    entry_pdf.get(),
@@ -93,15 +105,24 @@ def main():
                    tree
                )).pack(pady=10)
 
-    # ----- Tabla de resultados -----
+    # Tabla de resultados
     frame_tabla = ttk.LabelFrame(root, text=" Resultados ", padding=10)
     frame_tabla.pack(pady=10, padx=10, fill="both", expand=True)
 
     cols = ("No.", "Tipo L", "Doc L", "Nombre Listado", "Tipo C", "Doc C", "Nombre Certificado")
     tree = ttk.Treeview(frame_tabla, columns=cols, show="headings", height=15)
+    
+    # Configurar columnas
+    tree.column("No.", width=50)
+    tree.column("Tipo L", width=80)
+    tree.column("Doc L", width=120)
+    tree.column("Nombre Listado", width=250)
+    tree.column("Tipo C", width=80)
+    tree.column("Doc C", width=120)
+    tree.column("Nombre Certificado", width=250)
+    
     for col in cols:
         tree.heading(col, text=col)
-        tree.column(col, width=120 if col not in ["Nombre Listado", "Nombre Certificado"] else 250)
 
     tree.pack(fill="both", expand=True)
 

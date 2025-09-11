@@ -29,26 +29,30 @@ def main():
         fin_cert = int(input(f"Ingrese la página final de los CERTIFICADOS ({inicio_cert} - {total_paginas}): "))
 
     # Usar funciones ajustadas
-    tipos_listado, docs_listado, nombres_listado = extraer_datos_con_pdfplumber(archivo_pdf, inicio_listado, fin_listado)
-    nombres_cert, docs_cert, tipos_cert = extraer_datos_certificados(archivo_pdf, inicio_cert, fin_cert)
+    tipos_listado, docs_listado, nombres_listado = extraer_datos_con_pdfplumber(
+        archivo_pdf, inicio_listado, fin_listado
+    )
+    nombres_cert, docs_cert, tipos_cert = extraer_datos_certificados(
+        archivo_pdf, inicio_cert, fin_cert
+    )
 
-    # Crear diccionario de certificados para buscar rápido por documento
+# Por esta:
     certificados_dict = {
         doc: (tipo, nombre) for doc, tipo, nombre in zip(docs_cert, tipos_cert, nombres_cert)
     }
 
     # Reorganizar certificados en el orden del listado
     resultados_finales = []
-    for tipo, doc, nombre in zip(tipos_listado, docs_listado, nombres_listado):
-        if doc in certificados_dict:
-            tipo_cert, nombre_cert = certificados_dict[doc]
-            resultados_finales.append((tipo, doc, nombre, tipo_cert, doc, nombre_cert))
+    for tipo_l, doc_l, nom_list in zip(tipos_listado, docs_listado, nombres_listado):
+        if doc_l in certificados_dict:
+            tipo_c, nom_cert = certificados_dict[doc_l]
+            resultados_finales.append((tipo_l, doc_l, nom_list, tipo_c, doc_l, nom_cert))
         else:
-            resultados_finales.append((tipo, doc, nombre, "❌", "❌", "No encontrado"))
+            resultados_finales.append((tipo_l, doc_l, nom_list, "❌", "❌", "No encontrado"))
 
     # Mostrar resultados
     print(f"\n{'No.':<4} {'TIPO_L':<8} {'DOC_L':<15} {'NOMBRE LISTADO':<35} {'TIPO_C':<8} {'DOC_C':<15} {'NOMBRE CERTIFICADO':<35}")
-    print("-" * 130)
+    print("-" * 135)
     for i, (tipo_l, doc_l, nom_list, tipo_c, doc_c, nom_cert) in enumerate(resultados_finales, 1):
         print(f"{i:<4} {tipo_l:<8} {doc_l:<15} {nom_list:<35} {tipo_c:<8} {doc_c:<15} {nom_cert:<35}")
 
