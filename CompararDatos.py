@@ -16,12 +16,20 @@ def comparar_datos(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_ce
     Devuelve lista con comparación de datos:
     (No, Tipo_L, Doc_L, Nombre_Listado, Tipo_C, Doc_C, Nombre_Certificado, %Doc, %Nombre, Estado)
     """
-    tipos_listado, docs_listado, nombres_listado = extraer_datos_con_pdfplumber(
-        archivo_pdf, inicio_listado, fin_listado
-    )
-    nombres_cert, docs_cert, tipos_cert = extraer_datos_certificados(
-        archivo_pdf, inicio_cert, fin_cert
-    )
+    try:
+        tipos_listado, docs_listado, nombres_listado = extraer_datos_con_pdfplumber(
+            archivo_pdf, inicio_listado, fin_listado
+        )
+    except Exception as e:
+        return [("Error", "-", "-", f"Error listado: {str(e)}", "-", "-", "-", "-", "-", "Error")]
+    
+    try:
+        nombres_cert, docs_cert, tipos_cert = extraer_datos_certificados(
+            archivo_pdf, inicio_cert, fin_cert
+        )
+    except Exception as e:
+        # Si hay error extrayendo certificados, marcar todos como no encontrados
+        nombres_cert, docs_cert, tipos_cert = [], [], []
 
     # Contar ocurrencias de certificados para detectar duplicados
     contador_certificados = Counter(docs_cert)

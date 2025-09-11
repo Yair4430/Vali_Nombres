@@ -5,11 +5,22 @@ from ExtraerListado import extraer_datos_con_pdfplumber
 from ExtraerCertificados import extraer_datos_certificados
 from CompararDatos import comparar_datos
 
-def ejecutar_proceso(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert, tree, label_paginas):
+def obtener_valor_spin(spin_widget):
+    """Función segura para obtener valores de Spinbox"""
+    valor = spin_widget.get().strip()
+    return int(valor) if valor else 1  # Valor por defecto 1 si está vacío
+
+def ejecutar_proceso(archivo_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin, tree, label_paginas):
     try:
         if not archivo_pdf:
             messagebox.showerror("Error", "Seleccione un archivo PDF primero")
             return
+        
+        # Obtener valores de forma segura
+        inicio_listado = obtener_valor_spin(spin_listado_ini)
+        fin_listado = obtener_valor_spin(spin_listado_fin)
+        inicio_cert = obtener_valor_spin(spin_cert_ini)
+        fin_cert = obtener_valor_spin(spin_cert_fin)
             
         tipos_listado, docs_listado, nombres_listado = extraer_datos_con_pdfplumber(
             archivo_pdf, inicio_listado, fin_listado
@@ -62,38 +73,30 @@ def seleccionar_pdf(entry_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini
                 
                 for spin in [spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin]:
                     spin.config(to=total_paginas)
+                    # Establecer valores por defecto
                     spin.delete(0, tk.END)
                     spin.insert(0, "1")
+                # Establecer fin del listado como la última página por defecto
                 spin_listado_fin.delete(0, tk.END)
                 spin_listado_fin.insert(0, str(total_paginas))
+                # Establecer fin de certificados como la última página por defecto
+                spin_cert_fin.delete(0, tk.END)
+                spin_cert_fin.insert(0, str(total_paginas))
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el PDF: {str(e)}")
 
-def ejecutar_comparacion(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert, tree):
+def ejecutar_comparacion(archivo_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin, tree):
     try:
-        resultados = comparar_datos(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert)
-
-        for item in tree.get_children():
-            tree.delete(item)
-
-        for fila in resultados:
-            i, tipo_l, doc_l, nom_list, tipo_c, doc_c, nom_cert, sim_doc, sim_nom = fila
-
-            # Asignar tag según % de similitud
-            if sim_doc == "100.0%" and sim_nom == "100.0%":
-                tag = "correcto"
-            elif float(sim_nom.replace("%", "")) >= 70:
-                tag = "parcial"
-            else:
-                tag = "error"
-
-            tree.insert("", "end", values=fila, tags=(tag,))
-
-    except Exception as e:
-        messagebox.showerror("Error", f"Ocurrió un problema en comparación: {str(e)}")
-
-def ejecutar_comparacion(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert, tree):
-    try:
+        if not archivo_pdf:
+            messagebox.showerror("Error", "Seleccione un archivo PDF primero")
+            return
+        
+        # Obtener valores de forma segura
+        inicio_listado = obtener_valor_spin(spin_listado_ini)
+        fin_listado = obtener_valor_spin(spin_listado_fin)
+        inicio_cert = obtener_valor_spin(spin_cert_ini)
+        fin_cert = obtener_valor_spin(spin_cert_fin)
+        
         resultados = comparar_datos(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert)
 
         for item in tree.get_children():
@@ -119,9 +122,9 @@ def ejecutar_comparacion(archivo_pdf, inicio_listado, fin_listado, inicio_cert, 
     except Exception as e:
         messagebox.showerror("Error", f"Ocurrió un problema en comparación: {str(e)}")
 
-def main():
+def main_normal():
     root = tk.Tk()
-    root.title("Extractor Listado + Certificados")
+    root.title("Extractor Listado + Certificados - Modo Normal")
     root.geometry("1200x700")
     root.configure(bg="#f4f6f7")
 
@@ -136,13 +139,14 @@ def main():
     tk.Label(frame_sel, text="Archivo PDF:", font=("Segoe UI", 10)).grid(row=0, column=0, sticky="w")
     entry_pdf = ttk.Entry(frame_sel, width=80)
     entry_pdf.grid(row=0, column=1, padx=5)
-    ttk.Button(frame_sel, text="📂 Buscar",
-               command=lambda: seleccionar_pdf(entry_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin, label_paginas)
-    ).grid(row=0, column=2, padx=5)
-
+    
     # Label para mostrar total de páginas
     label_paginas = tk.Label(frame_sel, text="Total páginas: 0", font=("Segoe UI", 10, "bold"), fg="blue")
     label_paginas.grid(row=0, column=3, padx=10)
+    
+    ttk.Button(frame_sel, text="📂 Buscar",
+               command=lambda: seleccionar_pdf(entry_pdf, spin_listado_ini, spin_listado_fin, spin_cert_ini, spin_cert_fin, label_paginas)
+    ).grid(row=0, column=2, padx=5)
 
     # Sección Rango de páginas
     frame_rangos = ttk.LabelFrame(root, text=" Rango de páginas ", padding=10)
@@ -166,17 +170,18 @@ def main():
     ttk.Button(root, text="▶ Procesar",
                command=lambda: ejecutar_proceso(
                    entry_pdf.get(),
-                   int(spin_listado_ini.get()), int(spin_listado_fin.get()),
-                   int(spin_cert_ini.get()), int(spin_cert_fin.get()),
+                   spin_listado_ini, spin_listado_fin,
+                   spin_cert_ini, spin_cert_fin,
                    tree,
                    label_paginas
                )).pack(pady=10)
-        # Botón comparar
+    
+    # Botón comparar
     ttk.Button(root, text="🔍 Comparar",
                command=lambda: ejecutar_comparacion(
                    entry_pdf.get(),
-                   int(spin_listado_ini.get()), int(spin_listado_fin.get()),
-                   int(spin_cert_ini.get()), int(spin_cert_fin.get()),
+                   spin_listado_ini, spin_listado_fin,
+                   spin_cert_ini, spin_cert_fin,
                    tree
                )).pack(pady=5)
 
@@ -197,21 +202,6 @@ def main():
     tree.tag_configure("parcial", background="#fff7e6")    # Amarillo
     tree.tag_configure("duplicado", background="#ffe066")  # Amarillo fuerte
     tree.tag_configure("error", background="#ffe6e6")      # Rojo
-
-
-    # Configurar columnas
-    tree.column("No.", width=50)
-    tree.column("Tipo L", width=80)
-    tree.column("Doc L", width=120)
-    tree.column("Nombre Listado", width=250)
-    tree.column("Tipo C", width=80)
-    tree.column("Doc C", width=120)
-    tree.column("Nombre Certificado", width=250)
-    
-    for col in cols:
-        tree.heading(col, text=col)
-
-    # Configurar tags para colores
     tree.tag_configure('encontrado', background='#e8f5e8')  # Verde claro para encontrados
     tree.tag_configure('no_encontrado', background='#ffe6e6')  # Rojo claro para no encontrados
 
@@ -225,4 +215,4 @@ def main():
     root.mainloop()
 
 if __name__ == "__main__":
-    main()
+    main_normal()
