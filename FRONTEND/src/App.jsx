@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import ModoNormal from './Componentes/ModoNormal'
 import ModoMasivo from './Componentes/ModoMasivo'
-import './App.css'
+import './styles.css'
 
 function App() {
   const [modo, setModo] = useState('normal')

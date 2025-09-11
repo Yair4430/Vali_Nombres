@@ -65,7 +65,7 @@ const ModoMasivo = () => {
           className="form-control"
           disabled={cargando}
         />
-        <small style={{color: '#666', marginTop: '5px'}}>
+        <small className="form-hint">
           Ingrese la ruta completa de la carpeta que contiene los archivos PDF
         </small>
       </div>
@@ -80,14 +80,7 @@ const ModoMasivo = () => {
       </button>
 
       {mensaje && (
-        <div style={{
-          margin: '15px 0',
-          padding: '10px',
-          backgroundColor: cargando ? '#e3f2fd' : '#e8f5e8',
-          border: '1px solid',
-          borderColor: cargando ? '#bbdefb' : '#c8e6c9',
-          borderRadius: '4px'
-        }}>
+        <div className={`alert ${cargando ? 'alert-info' : 'alert-success'}`}>
           {mensaje}
         </div>
       )}
@@ -108,8 +101,8 @@ const ModoMasivo = () => {
           </div>
 
           <div className="table-container">
-            <h3>Resultados de: {pdfSeleccionado}</h3>
-            <div style={{marginBottom: '10px', fontSize: '14px', color: '#666'}}>
+            <h3 className="panel-subtitle">Resultados de: {pdfSeleccionado}</h3>
+            <div className="form-hint">
               Mostrando {resultados[pdfSeleccionado]?.length || 0} registros
             </div>
             <table className="data-table">
@@ -159,23 +152,6 @@ const ModoMasivo = () => {
           </div>
         </>
       )}
-
-      <div className="panel" style={{ marginTop: '20px', background: '#f8f9fa' }}>
-        <h4>Información del Modo Masivo</h4>
-        <ul style={{ textAlign: 'left', paddingLeft: '20px' }}>
-          <li><strong>Procesamiento automático:</strong> Analiza todos los PDFs en la carpeta y subcarpetas</li>
-          <li><strong>Detección inteligente:</strong> Identifica automáticamente listados y certificados</li>
-          <li><strong>Búsqueda recursiva:</strong> Examina todas las subcarpetas de la ruta proporcionada</li>
-          <li><strong>Resultados detallados:</strong> Muestra comparaciones individuales por archivo</li>
-          <li><strong>Formatos soportados:</strong> PDF con estructura de listado + certificados</li>
-        </ul>
-        
-        <div style={{marginTop: '15px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffeaa7', borderRadius: '4px'}}>
-          <strong>💡 Ejemplos de rutas:</strong><br/>
-          Windows: <code>C:\\Users\\Usuario\\Documents\\PDFs</code><br/>
-          Linux/Mac: <code>/home/usuario/documentos/pdfs</code>
-        </div>
-      </div>
     </div>
   )
 }

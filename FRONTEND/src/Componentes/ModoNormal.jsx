@@ -3,20 +3,24 @@ import axios from 'axios'
 
 const ModoNormal = () => {
   const [archivo, setArchivo] = useState(null)
+  const [nombreArchivo, setNombreArchivo] = useState('')
   const [totalPaginas, setTotalPaginas] = useState(0)
   const [rangos, setRangos] = useState({
-    inicio_listado: 1,
-    fin_listado: 1,
-    inicio_cert: 1,
-    fin_cert: 1
+    inicio_listado: '',
+    fin_listado: '',
+    inicio_cert: '',
+    fin_cert: ''
   })
   const [resultados, setResultados] = useState([])
   const [cargando, setCargando] = useState(false)
+  const [cargandoInfo, setCargandoInfo] = useState(false)
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0]
     if (file) {
       setArchivo(file)
+      setNombreArchivo(file.name)
+      setCargandoInfo(true)
       
       // Obtener información del PDF
       const formData = new FormData()
@@ -31,15 +35,19 @@ const ModoNormal = () => {
         
         if (response.data.success) {
           setTotalPaginas(response.data.total_paginas)
+          // Dejamos los campos vacíos en lugar de establecer valores por defecto
           setRangos({
-            inicio_listado: 1,
-            fin_listado: response.data.total_paginas,
-            inicio_cert: 1,
-            fin_cert: response.data.total_paginas
+            inicio_listado: '',
+            fin_listado: '',
+            inicio_cert: '',
+            fin_cert: ''
           })
         }
       } catch (error) {
         console.error('Error al obtener información del PDF:', error)
+        alert('Error al obtener información del PDF: ' + error.message)
+      } finally {
+        setCargandoInfo(false)
       }
     }
   }
@@ -50,14 +58,34 @@ const ModoNormal = () => {
       return
     }
 
+    // Validar que todos los campos estén completos
+    if (!rangos.inicio_listado || !rangos.fin_listado || !rangos.inicio_cert || !rangos.fin_cert) {
+      alert('Por favor, complete todos los campos de rango de páginas')
+      return
+    }
+
+    // Validar que los valores estén dentro del rango permitido
+    const inicioListado = parseInt(rangos.inicio_listado)
+    const finListado = parseInt(rangos.fin_listado)
+    const inicioCert = parseInt(rangos.inicio_cert)
+    const finCert = parseInt(rangos.fin_cert)
+
+    if (inicioListado < 1 || finListado > totalPaginas || 
+        inicioCert < 1 || finCert > totalPaginas ||
+        inicioListado > finListado || 
+        inicioCert > finCert) {
+      alert(`Por favor, ingrese valores válidos entre 1 y ${totalPaginas}`)
+      return
+    }
+
     setCargando(true)
     
     const formData = new FormData()
     formData.append('file', archivo)
-    formData.append('inicio_listado', rangos.inicio_listado)
-    formData.append('fin_listado', rangos.fin_listado)
-    formData.append('inicio_cert', rangos.inicio_cert)
-    formData.append('fin_cert', rangos.fin_cert)
+    formData.append('inicio_listado', inicioListado)
+    formData.append('fin_listado', finListado)
+    formData.append('inicio_cert', inicioCert)
+    formData.append('fin_cert', finCert)
 
     try {
       const response = await axios.post('/api/procesar', formData, {
@@ -73,7 +101,7 @@ const ModoNormal = () => {
       }
     } catch (error) {
       console.error('Error al procesar:', error)
-      alert('Error al procesar el archivo')
+      alert('Error al procesar el archivo: ' + error.message)
     } finally {
       setCargando(false)
     }
@@ -81,9 +109,34 @@ const ModoNormal = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
+    
+    // Permitir solo números y campo vacío
+    if (value === '' || /^[0-9\b]+$/.test(value)) {
+      setRangos(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    }
+  }
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target
+    
+    // Si el campo está vacío, no hacer nada
+    if (value === '') return
+    
+    let numericValue = parseInt(value)
+    
+    // Asegurar que el valor esté dentro del rango permitido
+    if (numericValue < 1) {
+      numericValue = 1
+    } else if (numericValue > totalPaginas) {
+      numericValue = totalPaginas
+    }
+    
     setRangos(prev => ({
       ...prev,
-      [name]: parseInt(value) || 1
+      [name]: numericValue.toString()
     }))
   }
 
@@ -98,83 +151,108 @@ const ModoNormal = () => {
           accept=".pdf"
           onChange={handleFileChange}
           className="form-control"
+          disabled={cargando}
         />
-        {totalPaginas > 0 && (
-          <small>Total páginas: {totalPaginas}</small>
+        {nombreArchivo && (
+          <span className="form-hint">
+            Archivo seleccionado: {nombreArchivo}
+            {totalPaginas > 0 && ` | Total páginas: ${totalPaginas}`}
+            {cargandoInfo && ' | Obteniendo información...'}
+          </span>
         )}
       </div>
 
-      {archivo && (
+      {archivo && totalPaginas > 0 && (
         <>
-          <div className="form-group">
-            <label>Listado - Inicio:</label>
-            <input
-              type="number"
-              name="inicio_listado"
-              value={rangos.inicio_listado}
-              onChange={handleInputChange}
-              min="1"
-              max={totalPaginas}
-              className="form-control"
-            />
+          <div className="panel-subtitle">Configurar rangos de páginas</div>
+          
+          <div className="flex-row">
+            <div className="form-group" style={{flex: 1}}>
+              <label>Listado - Inicio:</label>
+              <input
+                type="text"
+                name="inicio_listado"
+                value={rangos.inicio_listado}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                placeholder="1"
+                className="form-control"
+                disabled={cargando}
+              />
+            </div>
+
+            <div className="form-group" style={{flex: 1}}>
+              <label>Listado - Fin:</label>
+              <input
+                type="text"
+                name="fin_listado"
+                value={rangos.fin_listado}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                placeholder={totalPaginas.toString()}
+                className="form-control"
+                disabled={cargando}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Listado - Fin:</label>
-            <input
-              type="number"
-              name="fin_listado"
-              value={rangos.fin_listado}
-              onChange={handleInputChange}
-              min="1"
-              max={totalPaginas}
-              className="form-control"
-            />
+          <div className="flex-row">
+            <div className="form-group" style={{flex: 1}}>
+              <label>Certificados - Inicio:</label>
+              <input
+                type="text"
+                name="inicio_cert"
+                value={rangos.inicio_cert}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                placeholder="1"
+                className="form-control"
+                disabled={cargando}
+              />
+            </div>
+
+            <div className="form-group" style={{flex: 1}}>
+              <label>Certificados - Fin:</label>
+              <input
+                type="text"
+                name="fin_cert"
+                value={rangos.fin_cert}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                placeholder={totalPaginas.toString()}
+                className="form-control"
+                disabled={cargando}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Certificados - Inicio:</label>
-            <input
-              type="number"
-              name="inicio_cert"
-              value={rangos.inicio_cert}
-              onChange={handleInputChange}
-              min="1"
-              max={totalPaginas}
-              className="form-control"
-            />
+          <div className="flex-row">
+            <button 
+              onClick={handleProcesar} 
+              disabled={cargando}
+              className="btn btn-primary"
+            >
+              {cargando ? (
+                <>
+                  <span className="spinner"></span> Procesando...
+                </>
+              ) : (
+                <>
+                  ▶ Procesar
+                </>
+              )}
+            </button>
+
+            <button className="btn btn-success" disabled={cargando}>
+              🔍 Comparar
+            </button>
           </div>
-
-          <div className="form-group">
-            <label>Certificados - Fin:</label>
-            <input
-              type="number"
-              name="fin_cert"
-              value={rangos.fin_cert}
-              onChange={handleInputChange}
-              min="1"
-              max={totalPaginas}
-              className="form-control"
-            />
-          </div>
-
-          <button 
-            onClick={handleProcesar} 
-            disabled={cargando}
-            className="btn btn-primary"
-          >
-            {cargando ? 'Procesando...' : '▶ Procesar'}
-          </button>
-
-          <button className="btn btn-success">
-            🔍 Comparar
-          </button>
         </>
       )}
 
       {resultados.length > 0 && (
         <div className="table-container">
-          <h3>Resultados ({resultados.length} registros)</h3>
+          <h3 className="panel-subtitle">Resultados ({resultados.length} registros)</h3>
           <table className="data-table">
             <thead>
               <tr>
