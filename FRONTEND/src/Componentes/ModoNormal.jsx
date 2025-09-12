@@ -242,10 +242,6 @@ const ModoNormal = () => {
                 </>
               )}
             </button>
-
-            <button className="btn btn-success" disabled={cargando}>
-              🔍 Comparar
-            </button>
           </div>
         </>
       )}
@@ -268,15 +264,35 @@ const ModoNormal = () => {
                 <th>Estado</th>
               </tr>
             </thead>
-            <tbody>
-              {resultados.map((fila, index) => (
-                <tr key={index} className={fila[9].toLowerCase()}>
-                  {fila.map((celda, cellIndex) => (
-                    <td key={cellIndex}>{celda}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
+              <tbody>
+                {resultados.map((fila, index) => {
+                  // fila[7] = %Doc, fila[8] = %Nombre, fila[9] = Estado
+                  const porcentajeDoc = parseFloat(fila[7].replace('%', '')) || 0
+                  const porcentajeNombre = parseFloat(fila[8].replace('%', '')) || 0
+                  const estado = fila[9].toLowerCase()
+
+                  let claseSubrayado = ''
+
+                  if (estado === 'duplicado') {
+                    claseSubrayado = 'subrayado-amarillo'
+                  } else if (estado === 'falta certificado' || estado === 'no existe en listado') {
+                    claseSubrayado = 'subrayado-naranja'
+                  } else if (porcentajeDoc < 100 || porcentajeNombre < 100) {
+                    claseSubrayado = 'subrayado-rojo'
+                  }
+
+                  // Puedes combinar con la clase de estado si quieres mantenerla
+                  const claseFila = `${fila[9].toLowerCase()} ${claseSubrayado}`.trim()
+
+                  return (
+                    <tr key={index} className={claseFila}>
+                      {fila.map((celda, cellIndex) => (
+                        <td key={cellIndex}>{celda}</td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
           </table>
         </div>
       )}

@@ -292,3 +292,27 @@ h1 {
     min-width: 800px;
   }
 }
+
+.data-table tr.subrayado-rojo {
+  background-color: #fdecea; /* fondo rojo claro */
+}
+
+.data-table tr.subrayado-rojo td {
+  border-bottom: 3px solid #e74c3c;
+}
+
+.data-table tr.subrayado-amarillo {
+  background-color: #fff9e5; /* fondo amarillo claro */
+}
+
+.data-table tr.subrayado-amarillo td {
+  border-bottom: 3px solid #f1c40f;
+}
+
+.data-table tr.subrayado-naranja {
+  background-color: #fff4e5; /* fondo naranja claro */
+}
+
+.data-table tr.subrayado-naranja td {
+  border-bottom: 3px solid #e67e22;
+}

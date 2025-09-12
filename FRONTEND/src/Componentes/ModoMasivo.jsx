@@ -120,35 +120,34 @@ const ModoMasivo = () => {
                   <th>Estado</th>
                 </tr>
               </thead>
-              <tbody>
-                {resultados[pdfSeleccionado]?.map((fila, index) => (
-                  <tr key={index} className={fila[9].toLowerCase()}>
-                    {fila.map((celda, cellIndex) => (
-                      <td key={cellIndex}>{celda}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                <tbody>
+                  {resultados[pdfSeleccionado]?.map((fila, index) => {
+                    const porcentajeDoc = parseFloat(fila[7].replace('%', '')) || 0
+                    const porcentajeNombre = parseFloat(fila[8].replace('%', '')) || 0
+                    const estado = fila[9].toLowerCase()
 
-          <div style={{marginTop: '20px', textAlign: 'center'}}>
-            <button 
-              onClick={() => {
-                // Función para exportar resultados
-                const dataStr = JSON.stringify(resultados, null, 2)
-                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
-                const exportFileDefaultName = 'resultados_masivo.json'
-                
-                const linkElement = document.createElement('a')
-                linkElement.setAttribute('href', dataUri)
-                linkElement.setAttribute('download', exportFileDefaultName)
-                linkElement.click()
-              }}
-              className="btn btn-primary"
-            >
-              💾 Exportar Resultados JSON
-            </button>
+                    let claseSubrayado = ''
+
+                    if (estado === 'duplicado') {
+                      claseSubrayado = 'subrayado-amarillo'
+                    } else if (estado === 'falta certificado' || estado === 'no existe en listado') {
+                      claseSubrayado = 'subrayado-naranja'
+                    } else if (porcentajeDoc < 100 || porcentajeNombre < 100) {
+                      claseSubrayado = 'subrayado-rojo'
+                    }
+
+                    const claseFila = `${fila[9].toLowerCase()} ${claseSubrayado}`.trim()
+
+                    return (
+                      <tr key={index} className={claseFila}>
+                        {fila.map((celda, cellIndex) => (
+                          <td key={cellIndex}>{celda}</td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+            </table>
           </div>
         </>
       )}
