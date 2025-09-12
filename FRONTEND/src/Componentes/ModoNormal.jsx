@@ -14,6 +14,7 @@ const ModoNormal = () => {
   const [resultados, setResultados] = useState([])
   const [cargando, setCargando] = useState(false)
   const [cargandoInfo, setCargandoInfo] = useState(false)
+  const [mostrarResultados, setMostrarResultados] = useState(false)
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0]
@@ -21,6 +22,8 @@ const ModoNormal = () => {
       setArchivo(file)
       setNombreArchivo(file.name)
       setCargandoInfo(true)
+      setMostrarResultados(false)
+      setResultados([])
       
       // Obtener información del PDF
       const formData = new FormData()
@@ -79,6 +82,7 @@ const ModoNormal = () => {
     }
 
     setCargando(true)
+    setMostrarResultados(false)
     
     const formData = new FormData()
     formData.append('file', archivo)
@@ -96,6 +100,7 @@ const ModoNormal = () => {
       
       if (response.data.success) {
         setResultados(response.data.resultados)
+        setMostrarResultados(true)
       } else {
         alert('Error: ' + response.data.error)
       }
@@ -140,25 +145,60 @@ const ModoNormal = () => {
     }))
   }
 
+  const handleDescargarResultados = () => {
+    // Crear contenido CSV
+    const headers = ['No.', 'Tipo L', 'Doc L', 'Nombre Listado', 'Tipo C', 'Doc C', 'Nombre Certificado', '%Doc', '%Nombre', 'Estado']
+    const csvContent = [
+      headers.join(','),
+      ...resultados.map(row => row.join(','))
+    ].join('\n')
+    
+    // Crear blob y descargar
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `resultados_${nombreArchivo.replace('.pdf', '')}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="panel">
-      <h2 className="panel-title">Modo Normal</h2>
+      <h2 className="panel-title">
+        <span className="icon-single"></span>
+        Procesamiento Individual
+      </h2>
       
       <div className="form-group">
-        <label>Archivo PDF:</label>
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={handleFileChange}
-          className="form-control"
-          disabled={cargando}
-        />
+        <label className="form-label">
+          <span className="label-icon">📄</span>
+          Seleccionar archivo PDF
+        </label>
+        <div className="file-input-container">
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={handleFileChange}
+            className="file-input"
+            disabled={cargando}
+            id="fileInput"
+          />
+          <label htmlFor="fileInput" className="file-input-label">
+            <span className="file-input-icon">📂</span>
+            Seleccionar archivo
+          </label>
+        </div>
         {nombreArchivo && (
-          <span className="form-hint">
-            Archivo seleccionado: {nombreArchivo}
-            {totalPaginas > 0 && ` | Total páginas: ${totalPaginas}`}
-            {cargandoInfo && ' | Obteniendo información...'}
-          </span>
+          <div className="file-info">
+            <span className="file-name">{nombreArchivo}</span>
+            {totalPaginas > 0 && (
+              <span className="page-count"> | {totalPaginas} página{totalPaginas !== 1 ? 's' : ''}</span>
+            )}
+            {cargandoInfo && <span className="loading-info"> | Obteniendo información...</span>}
+          </div>
         )}
       </div>
 
@@ -166,79 +206,95 @@ const ModoNormal = () => {
         <>
           <div className="panel-subtitle">Configurar rangos de páginas</div>
           
-          <div className="flex-row">
-            <div className="form-group" style={{flex: 1}}>
-              <label>Listado - Inicio:</label>
-              <input
-                type="text"
-                name="inicio_listado"
-                value={rangos.inicio_listado}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                placeholder="1"
-                className="form-control"
-                disabled={cargando}
-              />
+          <div className="ranges-container">
+            <div className="range-group">
+              <h3 className="range-title">
+                <span className="range-icon">📋</span>
+                Listado
+              </h3>
+              <div className="range-inputs">
+                <div className="form-group">
+                  <label>Página inicial:</label>
+                  <input
+                    type="text"
+                    name="inicio_listado"
+                    value={rangos.inicio_listado}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    placeholder="1"
+                    className="form-control"
+                    disabled={cargando}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Página final:</label>
+                  <input
+                    type="text"
+                    name="fin_listado"
+                    value={rangos.fin_listado}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    placeholder={totalPaginas.toString()}
+                    className="form-control"
+                    disabled={cargando}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="form-group" style={{flex: 1}}>
-              <label>Listado - Fin:</label>
-              <input
-                type="text"
-                name="fin_listado"
-                value={rangos.fin_listado}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                placeholder={totalPaginas.toString()}
-                className="form-control"
-                disabled={cargando}
-              />
+            <div className="range-group">
+              <h3 className="range-title">
+                <span className="range-icon">🏆</span>
+                Certificados
+              </h3>
+              <div className="range-inputs">
+                <div className="form-group">
+                  <label>Página inicial:</label>
+                  <input
+                    type="text"
+                    name="inicio_cert"
+                    value={rangos.inicio_cert}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    placeholder="1"
+                    className="form-control"
+                    disabled={cargando}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Página final:</label>
+                  <input
+                    type="text"
+                    name="fin_cert"
+                    value={rangos.fin_cert}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    placeholder={totalPaginas.toString()}
+                    className="form-control"
+                    disabled={cargando}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex-row">
-            <div className="form-group" style={{flex: 1}}>
-              <label>Certificados - Inicio:</label>
-              <input
-                type="text"
-                name="inicio_cert"
-                value={rangos.inicio_cert}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                placeholder="1"
-                className="form-control"
-                disabled={cargando}
-              />
-            </div>
-
-            <div className="form-group" style={{flex: 1}}>
-              <label>Certificados - Fin:</label>
-              <input
-                type="text"
-                name="fin_cert"
-                value={rangos.fin_cert}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                placeholder={totalPaginas.toString()}
-                className="form-control"
-                disabled={cargando}
-              />
-            </div>
-          </div>
-
-          <div className="flex-row">
+          <div className="action-buttons">
             <button 
               onClick={handleProcesar} 
               disabled={cargando}
-              className="btn btn-primary"
+              className="btn btn-primary process-btn"
             >
               {cargando ? (
                 <>
-                  <span className="spinner"></span> Procesando...
+                  <span className="spinner"></span> 
+                  Procesando documento...
                 </>
               ) : (
                 <>
-                  ▶ Procesar
+                  <span className="btn-process-icon">⚡</span>
+                  Iniciar procesamiento
                 </>
               )}
             </button>
@@ -247,26 +303,32 @@ const ModoNormal = () => {
       )}
 
       {resultados.length > 0 && (
-        <div className="table-container">
-          <h3 className="panel-subtitle">Resultados ({resultados.length} registros)</h3>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>Tipo L</th>
-                <th>Doc L</th>
-                <th>Nombre Listado</th>
-                <th>Tipo C</th>
-                <th>Doc C</th>
-                <th>Nombre Certificado</th>
-                <th>%Doc</th>
-                <th>%Nombre</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
+        <div className={`results-container ${mostrarResultados ? 'visible' : ''}`}>
+          <div className="results-header">
+            <h3 className="panel-subtitle">
+              <span className="results-icon">📊</span>
+              Resultados del análisis ({resultados.length} registros)
+            </h3>
+          </div>
+          
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Tipo L</th>
+                  <th>Doc L</th>
+                  <th>Nombre Listado</th>
+                  <th>Tipo C</th>
+                  <th>Doc C</th>
+                  <th>Nombre Certificado</th>
+                  <th>%Doc</th>
+                  <th>%Nombre</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
               <tbody>
                 {resultados.map((fila, index) => {
-                  // fila[7] = %Doc, fila[8] = %Nombre, fila[9] = Estado
                   const porcentajeDoc = parseFloat(fila[7].replace('%', '')) || 0
                   const porcentajeNombre = parseFloat(fila[8].replace('%', '')) || 0
                   const estado = fila[9].toLowerCase()
@@ -281,7 +343,6 @@ const ModoNormal = () => {
                     claseSubrayado = 'subrayado-rojo'
                   }
 
-                  // Puedes combinar con la clase de estado si quieres mantenerla
                   const claseFila = `${fila[9].toLowerCase()} ${claseSubrayado}`.trim()
 
                   return (
@@ -293,7 +354,8 @@ const ModoNormal = () => {
                   )
                 })}
               </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
     </div>

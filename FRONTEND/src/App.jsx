@@ -8,24 +8,40 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Extractor Listado + Certificados</h1>
+      <header className="app-header">
+        <h1>
+          <span className="icon-document"></span>
+          Extractor Listado + Certificados
+        </h1>
+        <p className="app-subtitle">Herramienta de procesamiento y comparación de documentos PDF</p>
+      </header>
       
       <div className="mode-selector">
         <button 
           className={`mode-btn ${modo === 'normal' ? 'active' : ''}`}
           onClick={() => setModo('normal')}
         >
-          📄 Modo Normal
+          <span className="btn-icon">📄</span>
+          <span className="btn-text">Modo Normal</span>
+          <span className="btn-description">Procesar un solo archivo</span>
         </button>
         <button 
           className={`mode-btn ${modo === 'masivo' ? 'active' : ''}`}
           onClick={() => setModo('masivo')}
         >
-          📂 Modo Masivo
+          <span className="btn-icon">📂</span>
+          <span className="btn-text">Modo Masivo</span>
+          <span className="btn-description">Procesar carpeta completa</span>
         </button>
       </div>
 
-      {modo === 'normal' ? <ModoNormal /> : <ModoMasivo />}
+      <main className="main-content">
+        {modo === 'normal' ? <ModoNormal /> : <ModoMasivo />}
+      </main>
+
+      <footer className="app-footer">
+        <p>© {new Date().getFullYear()} Extractor PDF - Todos los derechos reservados</p>
+      </footer>
     </div>
   )
 }
