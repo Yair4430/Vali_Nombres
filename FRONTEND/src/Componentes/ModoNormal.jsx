@@ -315,16 +315,16 @@ const ModoNormal = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>No.</th>
-                  <th>Tipo L</th>
-                  <th>Doc L</th>
-                  <th>Nombre Listado</th>
-                  <th>Tipo C</th>
-                  <th>Doc C</th>
-                  <th>Nombre Certificado</th>
-                  <th>%Doc</th>
-                  <th>%Nombre</th>
-                  <th>Estado</th>
+                    <th>No.</th>
+                    <th>Tipo Documento Listado</th>
+                    <th>No. Documento Listado</th>
+                    <th>Nombres y Apellidos Listado</th>
+                    <th>Tipo Documento Certificado</th>
+                    <th>No. Documento Certificado</th>
+                    <th>Nombres y Apellidos Certificado</th>
+                    <th>% Numero de Documento</th>
+                    <th>% Nombres y Apellidos</th>
+                    <th>Estado</th>
                 </tr>
               </thead>
               <tbody>

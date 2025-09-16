@@ -719,3 +719,40 @@ body {
     background-color: #3b4f66;
   }
 }
+
+/* Estilos para estados de PDF en el selector */
+.estado-perfecto {
+  color: #2ecc71 !important;
+  font-weight: bold;
+  background-color: rgba(46, 204, 113, 0.1) !important;
+}
+
+.estado-con-problemas {
+  color: #f39c12 !important;
+  font-weight: bold;
+  background-color: rgba(243, 156, 18, 0.1) !important;
+}
+
+.estado-error {
+  color: #e74c3c !important;
+  font-weight: bold;
+  background-color: rgba(231, 76, 60, 0.1) !important;
+}
+
+/* Estilos para el selector de PDF */
+.pdf-selector option {
+  padding: 8px 12px;
+}
+
+/* Indicadores de estado en el selector */
+.pdf-selector option.estado-perfecto::before {
+  content: "✅ ";
+}
+
+.pdf-selector option.estado-con-problemas::before {
+  content: "⚠️ ";
+}
+
+.pdf-selector option.estado-error::before {
+  content: "❌ ";
+}

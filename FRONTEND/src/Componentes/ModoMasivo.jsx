@@ -27,7 +27,9 @@ const ModoMasivo = () => {
       if (response.data.success) {
         setResultados(response.data.resultados)
         if (Object.keys(response.data.resultados).length > 0) {
-          setPdfSeleccionado(Object.keys(response.data.resultados)[0])
+          // Seleccionar el primer PDF por defecto
+          const primerPdf = Object.keys(response.data.resultados)[0]
+          setPdfSeleccionado(primerPdf)
           setMensaje(`Procesamiento completado. Se encontraron ${Object.keys(response.data.resultados).length} archivos PDF.`)
           setMostrarResultados(true)
         } else {
@@ -53,9 +55,18 @@ const ModoMasivo = () => {
     }
   }
 
-  const handleDescargarTodo = () => {
-    // Lógica para descargar todos los resultados
-    alert('Funcionalidad de descarga completa en desarrollo')
+  // Función para determinar la clase CSS según el estado del PDF
+  const getClaseEstadoPdf = (estado) => {
+    switch (estado) {
+      case 'perfecto':
+        return 'estado-perfecto'
+      case 'con_problemas':
+        return 'estado-con-problemas'
+      case 'error':
+        return 'estado-error'
+      default:
+        return ''
+    }
   }
 
   return (
@@ -133,21 +144,23 @@ const ModoMasivo = () => {
                   className="form-control pdf-selector"
                 >
                   {Object.keys(resultados).map(pdf => (
-                    <option key={pdf} value={pdf}>{pdf}</option>
+                    <option 
+                      key={pdf} 
+                      value={pdf}
+                      className={getClaseEstadoPdf(resultados[pdf]?.estado_general)}
+                    >
+                      {pdf} {resultados[pdf]?.estado_general === 'perfecto' ? '✅' : 
+                            resultados[pdf]?.estado_general === 'con_problemas' ? '⚠️' : 
+                            resultados[pdf]?.estado_general === 'error' ? '❌' : ''}
+                    </option>
                   ))}
                 </select>
                 <span className="results-count">
-                  {resultados[pdfSeleccionado]?.length || 0} registros
+                  {resultados[pdfSeleccionado]?.total_registros || 0} registros
+                  {resultados[pdfSeleccionado]?.problemas > 0 && 
+                    ` (${resultados[pdfSeleccionado]?.problemas} problemas)`}
                 </span>
               </div>
-              
-              <button 
-                onClick={handleDescargarTodo}
-                className="btn btn-download"
-              >
-                <span className="download-icon">📥</span>
-                Descargar todo
-              </button>
             </div>
 
             <div className="table-container">
@@ -155,19 +168,19 @@ const ModoMasivo = () => {
                 <thead>
                   <tr>
                     <th>No.</th>
-                    <th>Tipo L</th>
-                    <th>Doc L</th>
-                    <th>Nombre Listado</th>
-                    <th>Tipo C</th>
-                    <th>Doc C</th>
-                    <th>Nombre Certificado</th>
-                    <th>%Doc</th>
-                    <th>%Nombre</th>
+                    <th>Tipo Documento Listado</th>
+                    <th>No. Documento Listado</th>
+                    <th>Nombres y Apellidos Listado</th>
+                    <th>Tipo Documento Certificado</th>
+                    <th>No. Documento Certificado</th>
+                    <th>Nombres y Apellidos Certificado</th>
+                    <th>% Numero de Documento</th>
+                    <th>% Nombres y Apellidos</th>
                     <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {resultados[pdfSeleccionado]?.map((fila, index) => {
+                  {resultados[pdfSeleccionado]?.resultados?.map((fila, index) => {
                     const porcentajeDoc = parseFloat(fila[7].replace('%', '')) || 0
                     const porcentajeNombre = parseFloat(fila[8].replace('%', '')) || 0
                     const estado = fila[9].toLowerCase()

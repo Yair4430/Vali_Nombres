@@ -10,7 +10,6 @@ def calcular_similitud(texto1, texto2):
         return 0
     return round(difflib.SequenceMatcher(None, str(texto1).strip(), str(texto2).strip()).ratio() * 100, 2)
 
-
 def comparar_datos(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert):
     """
     Devuelve lista con comparación de datos:
@@ -47,6 +46,8 @@ def comparar_datos(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_ce
             estado = "OK"
             if contador_certificados[doc_l] > 1:
                 estado = "Duplicado"
+            elif sim_nom < 100:
+                estado = "Nombre no coincide"
 
             resultados.append((i, tipo_l, doc_l, nom_list, tipo_c, doc_l, nom_cert, f"{sim_doc}%", f"{sim_nom}%", estado))
         else:

@@ -77,6 +77,7 @@ def procesar_pdf():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# En la función procesar_masivo_endpoint, modificar para incluir el estado general
 @app.route('/api/masivo', methods=['POST'])
 def procesar_masivo_endpoint():
     try:
@@ -98,10 +99,45 @@ def procesar_masivo_endpoint():
         
         resultados = procesar_masivo(carpeta_principal)
         
+        # Calcular estado general para cada PDF
+        resultados_con_estado = {}
+        for archivo, datos in resultados.items():
+            # Verificar si hay errores en la extracción
+            if datos and len(datos) > 0 and datos[0][0] == "Error":
+                resultados_con_estado[archivo] = {
+                    "resultados": datos,
+                    "estado_general": "error"
+                }
+                continue
+            
+            # Contar problemas
+            problemas = 0
+            for fila in datos:
+                estado = fila[9].lower() if len(fila) > 9 else ""
+                porcentaje_doc = float(fila[7].replace('%', '')) if len(fila) > 7 else 0
+                porcentaje_nombre = float(fila[8].replace('%', '')) if len(fila) > 8 else 0
+                
+                if (estado in ['duplicado', 'falta certificado', 'no existe en listado', 'error'] or 
+                    porcentaje_doc < 100 or porcentaje_nombre < 100):
+                    problemas += 1
+            
+            # Determinar estado general
+            if problemas == 0:
+                estado_general = "perfecto"
+            else:
+                estado_general = "con_problemas"
+                
+            resultados_con_estado[archivo] = {
+                "resultados": datos,
+                "estado_general": estado_general,
+                "problemas": problemas,
+                "total_registros": len(datos)
+            }
+        
         return jsonify({
             'success': True,
-            'resultados': resultados,
-            'total_archivos': len(resultados),
+            'resultados': resultados_con_estado,
+            'total_archivos': len(resultados_con_estado),
             'ruta_procesada': carpeta_principal
         })
         
