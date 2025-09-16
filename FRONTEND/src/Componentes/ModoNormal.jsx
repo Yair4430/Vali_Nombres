@@ -325,6 +325,7 @@ const ModoNormal = () => {
                     <th>% Numero de Documento</th>
                     <th>% Nombres y Apellidos</th>
                     <th>Estado</th>
+                    <th>Página</th>
                 </tr>
               </thead>
               <tbody>
