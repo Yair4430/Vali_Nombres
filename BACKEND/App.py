@@ -5,7 +5,7 @@ import tempfile
 import platform
 from werkzeug.utils import secure_filename
 from CompararDatos import comparar_datos
-from Masivo import procesar_masivo
+from Masivo import procesar_masivo, limpiar_certificados_masivo
 from ExtraerListado import extraer_datos_con_pdfplumber
 from ExtraerCertificados import extraer_datos_certificados
 
@@ -102,17 +102,21 @@ def procesar_masivo_endpoint():
         # Calcular estado general para cada PDF
         resultados_con_estado = {}
         for archivo, datos in resultados.items():
+            resultados_data = datos.get('resultados', [])
+            ruta_completa = datos.get('ruta_completa', '')
+            
             # Verificar si hay errores en la extracción
-            if datos and len(datos) > 0 and datos[0][0] == "Error":
+            if resultados_data and len(resultados_data) > 0 and resultados_data[0][0] == "Error":
                 resultados_con_estado[archivo] = {
-                    "resultados": datos,
-                    "estado_general": "error"
+                    "resultados": resultados_data,
+                    "estado_general": "error",
+                    "ruta_completa": ruta_completa
                 }
                 continue
             
             # Contar problemas
             problemas = 0
-            for fila in datos:
+            for fila in resultados_data:
                 estado = fila[9].lower() if len(fila) > 9 else ""
                 porcentaje_doc = float(fila[7].replace('%', '')) if len(fila) > 7 else 0
                 porcentaje_nombre = float(fila[8].replace('%', '')) if len(fila) > 8 else 0
@@ -128,10 +132,11 @@ def procesar_masivo_endpoint():
                 estado_general = "con_problemas"
                 
             resultados_con_estado[archivo] = {
-                "resultados": datos,
+                "resultados": resultados_data,
                 "estado_general": estado_general,
                 "problemas": problemas,
-                "total_registros": len(datos)
+                "total_registros": len(resultados_data),
+                "ruta_completa": ruta_completa
             }
         
         return jsonify({
@@ -198,6 +203,47 @@ def obtener_ejemplos_rutas():
         'sistema_operativo': platform.system(),
         'ejemplos': ejemplos
     })
+
+@app.route('/api/limpiar-certificados', methods=['POST'])
+def limpiar_certificados_endpoint():
+    try:
+        data = request.json
+        carpeta_principal = data.get('carpeta')
+        resultados_previos = data.get('resultados_previos', {})
+        
+        if not carpeta_principal:
+            return jsonify({'error': 'Debe proporcionar una ruta de carpeta'}), 400
+        
+        # Normalizar la ruta
+        carpeta_principal = normalizar_ruta(carpeta_principal)
+        
+        if not os.path.isdir(carpeta_principal):
+            return jsonify({'error': f'La ruta no existe o no es una carpeta válida: {carpeta_principal}'}), 400
+        
+        # Verificar permisos de escritura
+        if not os.access(carpeta_principal, os.W_OK):
+            return jsonify({'error': 'No tiene permisos de escritura para la carpeta especificada'}), 400
+        
+        # Limpiar certificados
+        resultados_limpieza = limpiar_certificados_masivo(carpeta_principal, resultados_previos)
+        
+        # Calcular estadísticas
+        total_archivos = len(resultados_limpieza)
+        archivos_exitosos = sum(1 for r in resultados_limpieza.values() if r.get('success', False))
+        total_paginas_eliminadas = sum(r.get('paginas_eliminadas', 0) for r in resultados_limpieza.values() if r.get('success', False))
+        
+        return jsonify({
+            'success': True,
+            'resultados_limpieza': resultados_limpieza,
+            'estadisticas': {
+                'total_archivos': total_archivos,
+                'archivos_exitosos': archivos_exitosos,
+                'total_paginas_eliminadas': total_paginas_eliminadas
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

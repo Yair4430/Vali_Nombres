@@ -145,26 +145,6 @@ const ModoNormal = () => {
     }))
   }
 
-  const handleDescargarResultados = () => {
-    // Crear contenido CSV
-    const headers = ['No.', 'Tipo L', 'Doc L', 'Nombre Listado', 'Tipo C', 'Doc C', 'Nombre Certificado', '%Doc', '%Nombre', 'Estado']
-    const csvContent = [
-      headers.join(','),
-      ...resultados.map(row => row.join(','))
-    ].join('\n')
-    
-    // Crear blob y descargar
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `resultados_${nombreArchivo.replace('.pdf', '')}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   return (
     <div className="panel">
       <h2 className="panel-title">

@@ -6,8 +6,10 @@ const ModoMasivo = () => {
   const [resultados, setResultados] = useState({})
   const [pdfSeleccionado, setPdfSeleccionado] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [limpiando, setLimpiando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [mostrarResultados, setMostrarResultados] = useState(false)
+  const [resultadosLimpieza, setResultadosLimpieza] = useState(null)
 
   const handleProcesarMasivo = async () => {
     if (!carpeta.trim()) {
@@ -18,6 +20,7 @@ const ModoMasivo = () => {
     setCargando(true)
     setMensaje('Procesando...')
     setMostrarResultados(false)
+    setResultadosLimpieza(null)
     
     try {
       const response = await axios.post('/api/masivo', {
@@ -27,22 +30,21 @@ const ModoMasivo = () => {
       if (response.data.success) {
         setResultados(response.data.resultados)
         if (Object.keys(response.data.resultados).length > 0) {
-          // Seleccionar el primer PDF por defecto
           const primerPdf = Object.keys(response.data.resultados)[0]
           setPdfSeleccionado(primerPdf)
-          setMensaje(`Procesamiento completado. Se encontraron ${Object.keys(response.data.resultados).length} archivos PDF.`)
+          setMensaje(`✅ Procesamiento completado. Se encontraron ${Object.keys(response.data.resultados).length} archivos PDF.`)
           setMostrarResultados(true)
         } else {
-          setMensaje('No se encontraron archivos PDF en la carpeta especificada.')
+          setMensaje('ℹ️ No se encontraron archivos PDF en la carpeta especificada.')
         }
       } else {
-        setMensaje('Error: ' + response.data.error)
+        setMensaje('❌ Error: ' + response.data.error)
         alert('Error: ' + response.data.error)
       }
     } catch (error) {
       console.error('Error al procesar:', error)
       const errorMsg = error.response?.data?.error || error.message || 'Error al procesar la carpeta'
-      setMensaje('Error: ' + errorMsg)
+      setMensaje('❌ Error: ' + errorMsg)
       alert('Error: ' + errorMsg)
     } finally {
       setCargando(false)
@@ -52,6 +54,82 @@ const ModoMasivo = () => {
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleProcesarMasivo()
+    }
+  }
+
+  const handleLimpiarCertificados = async () => {
+    if (!carpeta.trim() || Object.keys(resultados).length === 0) {
+      alert('Primero debe procesar la carpeta para identificar certificados innecesarios')
+      return
+    }
+
+    if (!confirm('¿Está seguro de que desea eliminar los certificados innecesarios?\n\nEsta acción:' +
+                 '\n• Eliminará certificados que no están en el listado' +
+                 '\n• Eliminará certificados duplicados (conservando solo el primero)' +
+                 '\n• Sobrescribirá los archivos PDF originales' +
+                 '\n• NO se puede deshacer')) {
+      return
+    }
+
+    setLimpiando(true)
+    setMensaje('🧹 Eliminando certificados innecesarios...')
+    
+    try {
+      const response = await axios.post('/api/limpiar-certificados', {
+        carpeta: carpeta.trim(),
+        resultados_previos: resultados
+      })
+      
+      if (response.data.success) {
+        setResultadosLimpieza(response.data)
+        const { total_paginas_eliminadas, archivos_exitosos } = response.data.estadisticas
+        setMensaje(`✅ Limpieza completada. Se eliminaron ${total_paginas_eliminadas} páginas innecesarias de ${archivos_exitosos} archivos.`)
+        
+        // Reprocesar automáticamente para mostrar resultados actualizados
+        handleReprocesarCarpeta()
+      } else {
+        setMensaje('❌ Error en la limpieza: ' + response.data.error)
+      }
+    } catch (error) {
+      console.error('Error al limpiar certificados:', error)
+      const errorMsg = error.response?.data?.error || error.message || 'Error al limpiar certificados'
+      setMensaje('❌ Error: ' + errorMsg)
+    } finally {
+      setLimpiando(false)
+    }
+  }
+
+  const handleReprocesarCarpeta = async () => {
+    setCargando(true)
+    setMensaje('🔄 Reprocesando carpeta después de la limpieza...')
+    
+    try {
+      const response = await axios.post('/api/masivo', {
+        carpeta: carpeta.trim()
+      })
+      
+      if (response.data.success) {
+        setResultados(response.data.resultados)
+        if (Object.keys(response.data.resultados).length > 0) {
+          const primerPdf = Object.keys(response.data.resultados)[0]
+          setPdfSeleccionado(primerPdf)
+        }
+        
+        // Calcular estadísticas después del reprocesamiento
+        const totalArchivos = Object.keys(response.data.resultados).length
+        const archivosPerfectos = Object.values(response.data.resultados).filter(
+          pdf => pdf.estado_general === 'perfecto'
+        ).length
+        
+        setMensaje(`✅ Reprocesamiento completado. ${archivosPerfectos} de ${totalArchivos} archivos están ahora perfectos.`)
+      } else {
+        setMensaje('❌ Error al reprocesar: ' + response.data.error)
+      }
+    } catch (error) {
+      console.error('Error al reprocesar:', error)
+      setMensaje('❌ Error al reprocesar: ' + (error.response?.data?.error || error.message))
+    } finally {
+      setCargando(false)
     }
   }
 
@@ -68,6 +146,24 @@ const ModoMasivo = () => {
         return ''
     }
   }
+
+  // Calcular estadísticas generales
+  const calcularEstadisticas = () => {
+    const totalArchivos = Object.keys(resultados).length
+    const archivosPerfectos = Object.values(resultados).filter(
+      pdf => pdf.estado_general === 'perfecto'
+    ).length
+    const archivosConProblemas = Object.values(resultados).filter(
+      pdf => pdf.estado_general === 'con_problemas'
+    ).length
+    const archivosConError = Object.values(resultados).filter(
+      pdf => pdf.estado_general === 'error'
+    ).length
+
+    return { totalArchivos, archivosPerfectos, archivosConProblemas, archivosConError }
+  }
+
+  const estadisticas = calcularEstadisticas()
 
   return (
     <div className="panel">
@@ -89,11 +185,11 @@ const ModoMasivo = () => {
             onKeyPress={handleKeyPress}
             placeholder="Ej: C:\Users\Usuario\Documents\PDFs"
             className="form-control folder-input"
-            disabled={cargando}
+            disabled={cargando || limpiando}
           />
           <button 
             onClick={handleProcesarMasivo} 
-            disabled={cargando || !carpeta.trim()}
+            disabled={cargando || limpiando || !carpeta.trim()}
             className="btn btn-folder"
           >
             <span className="folder-icon">📂</span>
@@ -105,10 +201,32 @@ const ModoMasivo = () => {
         </small>
       </div>
 
+      {/* Estadísticas rápidas */}
+      {estadisticas.totalArchivos > 0 && (
+        <div className="estadisticas-rapidas">
+          <div className="estadistica-item">
+            <span className="estadistica-numero">{estadisticas.totalArchivos}</span>
+            <span className="estadistica-label">Total PDFs</span>
+          </div>
+          <div className="estadistica-item perfecto">
+            <span className="estadistica-numero">{estadisticas.archivosPerfectos}</span>
+            <span className="estadistica-label">Perfectos</span>
+          </div>
+          <div className="estadistica-item problemas">
+            <span className="estadistica-numero">{estadisticas.archivosConProblemas}</span>
+            <span className="estadistica-label">Con problemas</span>
+          </div>
+          <div className="estadistica-item error">
+            <span className="estadistica-numero">{estadisticas.archivosConError}</span>
+            <span className="estadistica-label">Con error</span>
+          </div>
+        </div>
+      )}
+
       <div className="action-buttons">
         <button 
           onClick={handleProcesarMasivo} 
-          disabled={cargando || !carpeta.trim()}
+          disabled={cargando || limpiando || !carpeta.trim()}
           className="btn btn-success process-massive-btn"
         >
           {cargando ? (
@@ -123,12 +241,58 @@ const ModoMasivo = () => {
             </>
           )}
         </button>
+
+        <button 
+          onClick={handleLimpiarCertificados} 
+          disabled={limpiando || cargando || Object.keys(resultados).length === 0}
+          className="btn btn-warning clean-certificates-btn"
+          style={{ marginLeft: '10px' }}
+          title="Eliminar certificados que no están en el listado o están duplicados"
+        >
+          {limpiando ? (
+            <>
+              <span className="spinner"></span> 
+              Limpiando certificados...
+            </>
+          ) : (
+            <>
+              <span className="btn-clean-icon">🧹</span>
+              Borrar Certificados Innecesarios
+            </>
+          )}
+        </button>
       </div>
 
       {mensaje && (
-        <div className={`alert ${cargando ? 'alert-info' : resultados && Object.keys(resultados).length > 0 ? 'alert-success' : 'alert-info'}`}>
-          <span className="alert-icon">{cargando ? '⏳' : '✅'}</span>
+        <div className={`alert ${cargando ? 'alert-info' : limpiando ? 'alert-warning' : resultados && Object.keys(resultados).length > 0 ? 'alert-success' : 'alert-info'}`}>
+          <span className="alert-icon">
+            {cargando ? '⏳' : limpiando ? '🧹' : '✅'}
+          </span>
           {mensaje}
+        </div>
+      )}
+
+      {/* Mostrar resultados de limpieza */}
+      {resultadosLimpieza && (
+        <div className="alert alert-info">
+          <h4>📊 Resultados de la Limpieza:</h4>
+          <ul>
+            <li><strong>Archivos procesados:</strong> {resultadosLimpieza.estadisticas.total_archivos}</li>
+            <li><strong>Archivos exitosos:</strong> {resultadosLimpieza.estadisticas.archivos_exitosos}</li>
+            <li><strong>Páginas eliminadas:</strong> {resultadosLimpieza.estadisticas.total_paginas_eliminadas}</li>
+          </ul>
+          <details>
+            <summary>📋 Ver detalles por archivo</summary>
+            <div className="limpieza-detalles">
+              {Object.entries(resultadosLimpieza.resultados_limpieza).map(([archivo, resultado]) => (
+                <div key={archivo} className={`archivo-limpieza ${resultado.success ? 'exitoso' : 'error'}`}>
+                  <strong>{archivo}:</strong> {resultado.success ? 
+                    `✅ ${resultado.paginas_eliminadas} páginas eliminadas (${resultado.paginas_originales} → ${resultado.paginas_finales})` : 
+                    `❌ Error: ${resultado.error}`}
+                </div>
+              ))}
+            </div>
+          </details>
         </div>
       )}
 
@@ -142,6 +306,7 @@ const ModoMasivo = () => {
                   value={pdfSeleccionado}
                   onChange={(e) => setPdfSeleccionado(e.target.value)}
                   className="form-control pdf-selector"
+                  disabled={cargando || limpiando}
                 >
                   {Object.keys(resultados).map(pdf => (
                     <option 

@@ -3,7 +3,6 @@ from collections import Counter
 from ExtraerListado import extraer_datos_con_pdfplumber
 from ExtraerCertificados import extraer_datos_certificados
 
-
 def calcular_similitud(texto1, texto2):
     """Devuelve porcentaje de similitud entre dos textos."""
     if not texto1 or not texto2:

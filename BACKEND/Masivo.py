@@ -2,6 +2,7 @@ import os
 import pdfplumber
 import re
 from CompararDatos import comparar_datos
+from LimpiarCertificados import limpiar_certificados_pdf, obtener_documentos_validos
 
 def detectar_listado_y_certificados(ruta_pdf):
     """
@@ -85,10 +86,61 @@ def procesar_masivo(carpeta_principal):
                     print(f"Procesando {file}: Listado({inicio_listado}-{fin_listado}), Certificados({inicio_cert}-{fin_cert})")
                     
                     resultados = comparar_datos(ruta_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert)
-                    resultados_masivos[file] = resultados
+                    # Guardar tanto los resultados como la ruta completa
+                    resultados_masivos[file] = {
+                        'resultados': resultados,
+                        'ruta_completa': ruta_pdf
+                    }
                     
                 except Exception as e:
                     print(f"Error procesando {file}: {e}")
-                    resultados_masivos[file] = [("Error", "-", "-", "-", "-", "-", "-", "-", "-", f"Error: {str(e)}")]
+                    resultados_masivos[file] = {
+                        'resultados': [("Error", "-", "-", "-", "-", "-", "-", "-", "-", f"Error: {str(e)}")],
+                        'ruta_completa': ruta_pdf
+                    }
 
     return resultados_masivos
+
+def limpiar_certificados_masivo(carpeta_principal, resultados_previos):
+    """
+    Limpia certificados innecesarios en todos los PDFs procesados
+    """
+    resultados_limpieza = {}
+    
+    if not os.path.isdir(carpeta_principal):
+        raise ValueError("La ruta seleccionada no es una carpeta válida")
+    
+    for archivo, datos in resultados_previos.items():
+        # Usar la ruta completa guardada durante el procesamiento
+        if 'ruta_completa' in datos:
+            ruta_pdf = datos['ruta_completa']
+        else:
+            # Fallback: construir la ruta desde la carpeta principal
+            ruta_pdf = os.path.join(carpeta_principal, archivo)
+        
+        try:
+            # Verificar que el archivo existe antes de procesarlo
+            if not os.path.exists(ruta_pdf):
+                resultados_limpieza[archivo] = {
+                    'success': False,
+                    'error': f"Archivo no encontrado: {ruta_pdf}",
+                    'ruta_buscada': ruta_pdf
+                }
+                continue
+            
+            # Obtener documentos válidos para este PDF
+            documentos_validos = obtener_documentos_validos(datos.get('resultados', []))
+            
+            # Limpiar certificados
+            resultado_limpieza = limpiar_certificados_pdf(ruta_pdf, documentos_validos)
+            resultado_limpieza['ruta_procesada'] = ruta_pdf
+            resultados_limpieza[archivo] = resultado_limpieza
+            
+        except Exception as e:
+            resultados_limpieza[archivo] = {
+                'success': False,
+                'error': f"Error limpiando certificados: {str(e)}",
+                'ruta_intentada': ruta_pdf
+            }
+    
+    return resultados_limpieza
