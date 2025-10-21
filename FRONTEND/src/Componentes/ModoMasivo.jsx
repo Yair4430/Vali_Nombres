@@ -13,6 +13,37 @@ const ModoMasivo = () => {
   const [resultadosLimpieza, setResultadosLimpieza] = useState(null)
   const [resultadosOrganizacion, setResultadosOrganizacion] = useState(null)
 
+  // Función para eliminar un PDF de la lista
+  const handleEliminarPDF = (nombrePdf, event) => {
+    // Prevenir que el evento se propague y afecte la selección del dropdown
+    event.stopPropagation()
+    event.preventDefault()
+
+    if (!confirm(`¿Está seguro de que desea eliminar "${nombrePdf}" de la lista?\n\nEsta acción solo lo quitará de la vista, no eliminará el archivo físico.`)) {
+      return
+    }
+
+    // Crear una copia de los resultados sin el PDF eliminado
+    const nuevosResultados = { ...resultados }
+    delete nuevosResultados[nombrePdf]
+
+    // Actualizar el estado
+    setResultados(nuevosResultados)
+
+    // Si el PDF eliminado era el seleccionado, seleccionar el primero disponible
+    if (pdfSeleccionado === nombrePdf) {
+      const pdfsRestantes = Object.keys(nuevosResultados)
+      if (pdfsRestantes.length > 0) {
+        setPdfSeleccionado(pdfsRestantes[0])
+      } else {
+        setPdfSeleccionado('')
+        setMostrarResultados(false)
+      }
+    }
+
+    setMensaje(`✅ "${nombrePdf}" ha sido eliminado de la lista.`)
+  }
+
   const handleProcesarMasivo = async () => {
     if (!carpeta.trim()) {
       alert('Ingrese la ruta de la carpeta primero')
@@ -324,7 +355,7 @@ const ModoMasivo = () => {
           )}
         </button>
 
-        {/* NUEVO BOTÓN PARA ORGANIZAR PDFS PERFECTOS */}
+        {/* BOTÓN PARA ORGANIZAR PDFS PERFECTOS */}
         <button 
           onClick={handleOrganizarPDFsPerfectos} 
           disabled={organizando || cargando || limpiando || Object.keys(resultados).length === 0}
@@ -426,24 +457,34 @@ const ModoMasivo = () => {
             <div className="results-header">
               <div className="results-selection">
                 <label>Seleccionar PDF para ver detalles:</label>
-                <select
-                  value={pdfSeleccionado}
-                  onChange={(e) => setPdfSeleccionado(e.target.value)}
-                  className="form-control pdf-selector"
-                  disabled={cargando || limpiando || organizando}
-                >
-                  {Object.keys(resultados).map(pdf => (
-                    <option 
-                      key={pdf} 
-                      value={pdf}
-                      className={getClaseEstadoPdf(resultados[pdf]?.estado_general)}
-                    >
-                      {pdf} {resultados[pdf]?.estado_general === 'perfecto' ? '✅' : 
-                            resultados[pdf]?.estado_general === 'con_problemas' ? '⚠️' : 
-                            resultados[pdf]?.estado_general === 'error' ? '❌' : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="pdf-selector-container">
+                  <select
+                    value={pdfSeleccionado}
+                    onChange={(e) => setPdfSeleccionado(e.target.value)}
+                    className="form-control pdf-selector"
+                    disabled={cargando || limpiando || organizando}
+                  >
+                    {Object.keys(resultados).map(pdf => (
+                      <option 
+                        key={pdf} 
+                        value={pdf}
+                        className={getClaseEstadoPdf(resultados[pdf]?.estado_general)}
+                      >
+                        {pdf} {resultados[pdf]?.estado_general === 'perfecto' ? '✅' : 
+                              resultados[pdf]?.estado_general === 'con_problemas' ? '⚠️' : 
+                              resultados[pdf]?.estado_general === 'error' ? '❌' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn-eliminar-pdf"
+                    onClick={(e) => handleEliminarPDF(pdfSeleccionado, e)}
+                    disabled={cargando || limpiando || organizando || !pdfSeleccionado}
+                    title={`Eliminar "${pdfSeleccionado}" de la lista`}
+                  >
+                    🗑️
+                  </button>
+                </div>
                 <span className="results-count">
                   {resultados[pdfSeleccionado]?.total_registros || 0} registros
                   {resultados[pdfSeleccionado]?.problemas > 0 && 

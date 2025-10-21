@@ -756,3 +756,74 @@ body {
 .pdf-selector option.estado-error::before {
   content: "❌ ";
 }
+
+/* Contenedor para el selector de PDF con botón de eliminar */
+.pdf-selector-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pdf-selector {
+  flex: 1;
+}
+
+.btn-eliminar-pdf {
+  background: #dc3545;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 38px; /* Misma altura que el selector */
+}
+
+.btn-eliminar-pdf:hover:not(:disabled) {
+  background: #c82333;
+  transform: scale(1.05);
+}
+
+.btn-eliminar-pdf:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-eliminar-pdf:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* Mejoras responsive */
+@media (max-width: 768px) {
+  .pdf-selector-container {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .btn-eliminar-pdf {
+    width: 100%;
+    height: 35px;
+  }
+}
+
+/* Estilos para los estados en el dropdown */
+.estado-perfecto {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.estado-con-problemas {
+  color: #ffc107;
+  font-weight: 500;
+}
+
+.estado-error {
+  color: #dc3545;
+  font-weight: 500;
+}
