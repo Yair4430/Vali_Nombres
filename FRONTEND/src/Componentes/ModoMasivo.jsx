@@ -7,9 +7,11 @@ const ModoMasivo = () => {
   const [pdfSeleccionado, setPdfSeleccionado] = useState('')
   const [cargando, setCargando] = useState(false)
   const [limpiando, setLimpiando] = useState(false)
+  const [organizando, setOrganizando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [mostrarResultados, setMostrarResultados] = useState(false)
   const [resultadosLimpieza, setResultadosLimpieza] = useState(null)
+  const [resultadosOrganizacion, setResultadosOrganizacion] = useState(null)
 
   const handleProcesarMasivo = async () => {
     if (!carpeta.trim()) {
@@ -21,6 +23,7 @@ const ModoMasivo = () => {
     setMensaje('Procesando...')
     setMostrarResultados(false)
     setResultadosLimpieza(null)
+    setResultadosOrganizacion(null)
     
     try {
       const response = await axios.post('/api/masivo', {
@@ -96,6 +99,65 @@ const ModoMasivo = () => {
       setMensaje('❌ Error: ' + errorMsg)
     } finally {
       setLimpiando(false)
+    }
+  }
+
+  const handleOrganizarPDFsPerfectos = async () => {
+    if (!carpeta.trim() || Object.keys(resultados).length === 0) {
+      alert('Primero debe procesar la carpeta para identificar las subcarpetas perfectas')
+      return
+    }
+
+    // Contar archivos perfectos para mostrar en la confirmación
+    const archivosPerfectos = Object.values(resultados).filter(
+      pdf => pdf.estado_general === 'perfecto'
+    ).length
+
+    if (archivosPerfectos === 0) {
+      alert('No hay archivos PDF en estado "perfecto" para organizar.')
+      return
+    }
+
+    if (!confirm(`¿Está seguro de que desea organizar las subcarpetas perfectas?\n\nEsta acción:` +
+                `\n• Creará una subcarpeta "PDFS EN OK" en la carpeta principal` +
+                `\n• Moverá las subcarpetas que contienen solo PDFs perfectos` +
+                `\n• Renombrará las subcarpetas agregando "_OK" al final` +
+                `\n• Los resultados mostrarán solo los archivos con problemas` +
+                `\n• NO se puede deshacer`)) {
+      return
+    }
+
+    setOrganizando(true)
+    setMensaje('📁 Organizando subcarpetas perfectas...')
+    
+    try {
+      const response = await axios.post('/api/organizar-pdfs-perfectos', {
+        carpeta: carpeta.trim(),
+        resultados_previos: resultados
+      })
+      
+      if (response.data.success) {
+        setResultadosOrganizacion(response.data)
+        const { total_subcarpetas_movidas } = response.data.resultados_organizacion
+        
+        // Actualizar resultados para mostrar solo los que tienen problemas
+        setResultados(response.data.resultados_filtrados)
+        
+        if (Object.keys(response.data.resultados_filtrados).length > 0) {
+          const primerPdf = Object.keys(response.data.resultados_filtrados)[0]
+          setPdfSeleccionado(primerPdf)
+        }
+        
+        setMensaje(`✅ Organización completada. Se movieron ${total_subcarpetas_movidas} subcarpetas perfectas a "PDFS EN OK".`)
+      } else {
+        setMensaje('❌ Error en la organización: ' + response.data.error)
+      }
+    } catch (error) {
+      console.error('Error al organizar subcarpetas:', error)
+      const errorMsg = error.response?.data?.error || error.message || 'Error al organizar subcarpetas'
+      setMensaje('❌ Error: ' + errorMsg)
+    } finally {
+      setOrganizando(false)
     }
   }
 
@@ -185,11 +247,11 @@ const ModoMasivo = () => {
             onKeyPress={handleKeyPress}
             placeholder="Ej: C:\Users\Usuario\Documents\PDFs"
             className="form-control folder-input"
-            disabled={cargando || limpiando}
+            disabled={cargando || limpiando || organizando}
           />
           <button 
             onClick={handleProcesarMasivo} 
-            disabled={cargando || limpiando || !carpeta.trim()}
+            disabled={cargando || limpiando || organizando || !carpeta.trim()}
             className="btn btn-folder"
           >
             <span className="folder-icon">📂</span>
@@ -226,7 +288,7 @@ const ModoMasivo = () => {
       <div className="action-buttons">
         <button 
           onClick={handleProcesarMasivo} 
-          disabled={cargando || limpiando || !carpeta.trim()}
+          disabled={cargando || limpiando || organizando || !carpeta.trim()}
           className="btn btn-success process-massive-btn"
         >
           {cargando ? (
@@ -244,7 +306,7 @@ const ModoMasivo = () => {
 
         <button 
           onClick={handleLimpiarCertificados} 
-          disabled={limpiando || cargando || Object.keys(resultados).length === 0}
+          disabled={limpiando || cargando || organizando || Object.keys(resultados).length === 0}
           className="btn btn-warning clean-certificates-btn"
           style={{ marginLeft: '10px' }}
           title="Eliminar certificados que no están en el listado o están duplicados"
@@ -261,12 +323,33 @@ const ModoMasivo = () => {
             </>
           )}
         </button>
+
+        {/* NUEVO BOTÓN PARA ORGANIZAR PDFS PERFECTOS */}
+        <button 
+          onClick={handleOrganizarPDFsPerfectos} 
+          disabled={organizando || cargando || limpiando || Object.keys(resultados).length === 0}
+          className="btn btn-info organize-pdfs-btn"
+          style={{ marginLeft: '10px' }}
+          title="Mover PDFs perfectos a subcarpeta y renombrarlos"
+        >
+          {organizando ? (
+            <>
+              <span className="spinner"></span> 
+              Organizando PDFs...
+            </>
+          ) : (
+            <>
+              <span className="btn-organize-icon">📂</span>
+              Reunir los que están bien
+            </>
+          )}
+        </button>
       </div>
 
       {mensaje && (
-        <div className={`alert ${cargando ? 'alert-info' : limpiando ? 'alert-warning' : resultados && Object.keys(resultados).length > 0 ? 'alert-success' : 'alert-info'}`}>
+        <div className={`alert ${cargando ? 'alert-info' : limpiando ? 'alert-warning' : organizando ? 'alert-primary' : resultados && Object.keys(resultados).length > 0 ? 'alert-success' : 'alert-info'}`}>
           <span className="alert-icon">
-            {cargando ? '⏳' : limpiando ? '🧹' : '✅'}
+            {cargando ? '⏳' : limpiando ? '🧹' : organizando ? '📁' : '✅'}
           </span>
           {mensaje}
         </div>
@@ -296,6 +379,47 @@ const ModoMasivo = () => {
         </div>
       )}
 
+      {/* Mostrar resultados de organización */}
+      {resultadosOrganizacion && (
+        <div className="alert alert-primary">
+          <h4>📁 Resultados de la Organización:</h4>
+          <ul>
+            <li><strong>Carpeta creada:</strong> {resultadosOrganizacion.resultados_organizacion.carpeta_ok_creada}</li>
+            <li><strong>Subcarpetas perfectas encontradas:</strong> {resultadosOrganizacion.resultados_organizacion.total_subcarpetas_perfectas}</li>
+            <li><strong>Subcarpetas movidas exitosamente:</strong> {resultadosOrganizacion.resultados_organizacion.total_subcarpetas_movidas}</li>
+            <li><strong>Archivos mostrados ahora:</strong> {resultadosOrganizacion.total_archivos_filtrados} (solo con problemas)</li>
+          </ul>
+          <details>
+            <summary>📋 Ver detalles de subcarpetas movidas</summary>
+            <div className="organizacion-detalles">
+              {resultadosOrganizacion.resultados_organizacion.subcarpetas_movidas.map((subcarpeta, index) => (
+                <div key={index} className="subcarpeta-organizada exitosa">
+                  <strong>{subcarpeta.subcarpeta_original}</strong> → <strong>{subcarpeta.subcarpeta_renombrada}</strong>
+                  <div className="subcarpeta-info">
+                    <small>Contiene {subcarpeta.archivos_perfectos} archivos perfectos</small>
+                  </div>
+                  <div className="ruta-detalle">
+                    <small>De: {subcarpeta.ruta_original}</small>
+                    <br />
+                    <small>A: {subcarpeta.ruta_nueva}</small>
+                  </div>
+                </div>
+              ))}
+              {resultadosOrganizacion.resultados_organizacion.subcarpetas_con_error.length > 0 && (
+                <>
+                  <h5>Subcarpetas con error:</h5>
+                  {resultadosOrganizacion.resultados_organizacion.subcarpetas_con_error.map((subcarpeta, index) => (
+                    <div key={index} className="subcarpeta-organizada error">
+                      <strong>{subcarpeta.subcarpeta}</strong> - Error: {subcarpeta.error}
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </details>
+        </div>
+      )}
+
       {Object.keys(resultados).length > 0 && (
         <>
           <div className={`results-container massive ${mostrarResultados ? 'visible' : ''}`}>
@@ -306,7 +430,7 @@ const ModoMasivo = () => {
                   value={pdfSeleccionado}
                   onChange={(e) => setPdfSeleccionado(e.target.value)}
                   className="form-control pdf-selector"
-                  disabled={cargando || limpiando}
+                  disabled={cargando || limpiando || organizando}
                 >
                   {Object.keys(resultados).map(pdf => (
                     <option 

@@ -8,6 +8,7 @@ from CompararDatos import comparar_datos
 from Masivo import procesar_masivo, limpiar_certificados_masivo
 from ExtraerListado import extraer_datos_con_pdfplumber
 from ExtraerCertificados import extraer_datos_certificados
+from OrganizarPDFs import organizar_pdfs_perfectos, obtener_resultados_solo_con_problemas
 
 app = Flask(__name__)
 CORS(app)
@@ -240,6 +241,52 @@ def limpiar_certificados_endpoint():
                 'archivos_exitosos': archivos_exitosos,
                 'total_paginas_eliminadas': total_paginas_eliminadas
             }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/organizar-pdfs-perfectos', methods=['POST'])
+def organizar_pdfs_perfectos_endpoint():
+    try:
+        data = request.json
+        carpeta_principal = data.get('carpeta')
+        resultados_previos = data.get('resultados_previos', {})
+        
+        if not carpeta_principal:
+            return jsonify({'error': 'Debe proporcionar una ruta de carpeta'}), 400
+        
+        # Normalizar la ruta
+        carpeta_principal = normalizar_ruta(carpeta_principal)
+        
+        if not os.path.isdir(carpeta_principal):
+            return jsonify({'error': f'La ruta no existe o no es una carpeta válida: {carpeta_principal}'}), 400
+        
+        # Verificar permisos de escritura
+        if not os.access(carpeta_principal, os.W_OK):
+            return jsonify({'error': 'No tiene permisos de escritura para la carpeta especificada'}), 400
+        
+        # Organizar PDFs perfectos
+        resultados_organizacion = organizar_pdfs_perfectos(carpeta_principal, resultados_previos)
+        
+        if not resultados_organizacion['success']:
+            return jsonify({
+                'success': False,
+                'error': resultados_organizacion['error']
+            }), 400
+        
+        # Obtener resultados filtrados (excluyendo archivos de subcarpetas movidas)
+        resultados_filtrados = obtener_resultados_solo_con_problemas(
+            resultados_previos, 
+            resultados_organizacion['subcarpetas_movidas']
+        )
+        
+        return jsonify({
+            'success': True,
+            'resultados_organizacion': resultados_organizacion,
+            'resultados_filtrados': resultados_filtrados,
+            'total_archivos_original': len(resultados_previos),
+            'total_archivos_filtrados': len(resultados_filtrados)
         })
         
     except Exception as e:
