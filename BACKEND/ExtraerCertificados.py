@@ -27,8 +27,8 @@ def extraer_datos_certificados(archivo_pdf, pagina_inicio, pagina_fin):
                     nombre = nombre_match.group(1).strip()
                     nombre = re.sub(r'\s+', ' ', nombre).strip()
 
-            # --- Detectar PPT ---
-            elif "Permiso por Protección Temporal" in texto:
+            # --- Detectar PPT - FORMATO 1 (el que ya tenías) ---
+            elif "Permiso por Protección Temporal" in texto and "Nombres:" in texto and "Apellidos:" in texto:
                 tipo_doc = "PPT"
                 numero_doc_match = re.search(r"Permiso por Protección Temporal N°:\s*([\d]+)", texto)
                 if numero_doc_match:
@@ -40,6 +40,38 @@ def extraer_datos_certificados(archivo_pdf, pagina_inicio, pagina_fin):
                 if nombres_match and apellidos_match:
                     nombre_completo = f"{nombres_match.group(1).strip()} {apellidos_match.group(1).strip()}"
                     nombre = re.sub(r'\s+[AP]$', '', nombre_completo).strip()
+
+            # --- Detectar PPT - FORMATO 2 (nuevo formato) ---
+            elif "Permiso por Protección Temporal" in texto and "RUMV" in texto:
+                tipo_doc = "PPT"
+                
+                # Buscar número de PPT/RUMV
+                numero_doc_match = re.search(r"PPT número (\d+)", texto)
+                if not numero_doc_match:
+                    numero_doc_match = re.search(r"RUMV (\d+)", texto)
+                if not numero_doc_match:
+                    numero_doc_match = re.search(r"número de RUMV (\d+)", texto)
+                
+                if numero_doc_match:
+                    numero_doc = numero_doc_match.group(1).strip()
+
+                # Buscar nombre completo en el nuevo formato
+                # Patrón 1: Buscar después de "migrante venezolano" y antes de "surtió"
+                nombre_match = re.search(r"migrante venezolano\*\*?\s*([A-ZÁÉÍÓÚÑ\s]+?)\s*surtió", texto, re.IGNORECASE)
+                
+                if not nombre_match:
+                    # Patrón 2: Buscar entre "**" (formato con negritas)
+                    nombre_match = re.search(r"\*\*([A-ZÁÉÍÓÚÑ\s]+?)\*\*", texto)
+                
+                if not nombre_match:
+                    # Patrón 3: Buscar nombre después de "le permite a" y antes de "salir"
+                    nombre_match = re.search(r"le permite a\s*\*?\*?([A-ZÁÉÍÓÚÑ\s]+?)\s*salir", texto, re.IGNORECASE)
+                
+                if nombre_match:
+                    nombre_completo = nombre_match.group(1).strip().upper()
+                    # Limpiar y normalizar el nombre
+                    nombre = re.sub(r'[^A-ZÁÉÍÓÚÑ\s]', '', nombre_completo)
+                    nombre = re.sub(r'\s+', ' ', nombre).strip()
 
             # --- Detectar TI ---
             elif "Número Único de Identificación Personal" in texto or "CERTIFICADO DE INSCRIPCIÓN" in texto:
