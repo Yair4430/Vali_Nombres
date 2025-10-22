@@ -105,13 +105,24 @@ def procesar_masivo_endpoint():
         for archivo, datos in resultados.items():
             resultados_data = datos.get('resultados', [])
             ruta_completa = datos.get('ruta_completa', '')
+            tiene_error_formato = datos.get('tiene_error_formato', False)
             
             # Verificar si hay errores en la extracción
+            if tiene_error_formato:
+                resultados_con_estado[archivo] = {
+                    "resultados": resultados_data,
+                    "estado_general": "error_formato",
+                    "ruta_completa": ruta_completa,
+                    "tiene_error_formato": True
+                }
+                continue
+                
             if resultados_data and len(resultados_data) > 0 and resultados_data[0][0] == "Error":
                 resultados_con_estado[archivo] = {
                     "resultados": resultados_data,
                     "estado_general": "error",
-                    "ruta_completa": ruta_completa
+                    "ruta_completa": ruta_completa,
+                    "tiene_error_formato": False
                 }
                 continue
             
@@ -137,7 +148,8 @@ def procesar_masivo_endpoint():
                 "estado_general": estado_general,
                 "problemas": problemas,
                 "total_registros": len(resultados_data),
-                "ruta_completa": ruta_completa
+                "ruta_completa": ruta_completa,
+                "tiene_error_formato": False
             }
         
         return jsonify({

@@ -827,3 +827,13 @@ body {
   color: #dc3545;
   font-weight: 500;
 }
+
+.estado-error-formato {
+  background-color: #ffcccc !important;
+  color: #cc0000 !important;
+  font-weight: bold;
+}
+
+.subrayado-rojo {
+  background-color: #ffcccc;
+}

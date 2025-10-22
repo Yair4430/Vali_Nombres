@@ -18,6 +18,11 @@ def extraer_datos_con_pdfplumber(archivo_pdf, pagina_inicio, pagina_fin):
             )
 
             matches = patron.findall(texto)
+            
+            # Si no encontramos ningún registro en esta página, continuar
+            if not matches:
+                continue
+                
             for match in matches:
                 tipo_doc_completo = match[1]
                 nombre = match[2].strip()
@@ -36,5 +41,9 @@ def extraer_datos_con_pdfplumber(archivo_pdf, pagina_inicio, pagina_fin):
                 tipos.append(tipo)
                 documentos.append(documento)
                 nombres.append(nombre)
+
+    # Si no se encontró ningún dato, lanzar una excepción específica
+    if len(documentos) == 0:
+        raise ValueError("No se pudo extraer el listado. El formato del PDF puede estar mal elaborado o no seguir la estructura esperada.")
 
     return tipos, documentos, nombres

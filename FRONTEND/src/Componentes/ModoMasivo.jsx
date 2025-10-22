@@ -235,6 +235,8 @@ const ModoMasivo = () => {
         return 'estado-con-problemas'
       case 'error':
         return 'estado-error'
+      case 'error_formato':
+        return 'estado-error-formato'
       default:
         return ''
     }
@@ -465,6 +467,7 @@ const ModoMasivo = () => {
                     disabled={cargando || limpiando || organizando}
                   >
                     {Object.keys(resultados).map(pdf => (
+                      // En el selector de PDFs, actualiza para mostrar el nuevo estado:
                       <option 
                         key={pdf} 
                         value={pdf}
@@ -472,6 +475,7 @@ const ModoMasivo = () => {
                       >
                         {pdf} {resultados[pdf]?.estado_general === 'perfecto' ? '✅' : 
                               resultados[pdf]?.estado_general === 'con_problemas' ? '⚠️' : 
+                              resultados[pdf]?.estado_general === 'error_formato' ? '❌ FORMATO' : 
                               resultados[pdf]?.estado_general === 'error' ? '❌' : ''}
                       </option>
                     ))}

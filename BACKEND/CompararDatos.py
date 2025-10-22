@@ -19,7 +19,11 @@ def comparar_datos(archivo_pdf, inicio_listado, fin_listado, inicio_cert, fin_ce
             archivo_pdf, inicio_listado, fin_listado
         )
     except Exception as e:
-        return [("Error", "-", "-", f"Error listado: {str(e)}", "-", "-", "-", "-", "-", "Error", "-")]
+        error_msg = str(e)
+        if "No se pudo extraer el listado" in error_msg:
+            return [("Error", "-", "-", "❌ NO SE PUEDE PROCESAR - Listado mal elaborado", "-", "-", "-", "-", "-", "Error Formato", "-")]
+        else:
+            return [("Error", "-", "-", f"Error listado: {error_msg}", "-", "-", "-", "-", "-", "Error", "-")]
     
     try:
         nombres_cert, docs_cert, tipos_cert, paginas_cert = extraer_datos_certificados(

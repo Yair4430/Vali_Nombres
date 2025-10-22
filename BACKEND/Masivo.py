@@ -86,17 +86,26 @@ def procesar_masivo(carpeta_principal):
                     print(f"Procesando {file}: Listado({inicio_listado}-{fin_listado}), Certificados({inicio_cert}-{fin_cert})")
                     
                     resultados = comparar_datos(ruta_pdf, inicio_listado, fin_listado, inicio_cert, fin_cert)
+                    
+                    # Verificar si el PDF tiene error de formato
+                    tiene_error_formato = any(
+                        fila[0] == "Error" and "NO SE PUEDE PROCESAR" in str(fila[3]) 
+                        for fila in resultados if len(fila) > 3
+                    )
+                    
                     # Guardar tanto los resultados como la ruta completa
                     resultados_masivos[file] = {
                         'resultados': resultados,
-                        'ruta_completa': ruta_pdf
+                        'ruta_completa': ruta_pdf,
+                        'tiene_error_formato': tiene_error_formato
                     }
                     
                 except Exception as e:
                     print(f"Error procesando {file}: {e}")
                     resultados_masivos[file] = {
-                        'resultados': [("Error", "-", "-", "-", "-", "-", "-", "-", "-", f"Error: {str(e)}")],
-                        'ruta_completa': ruta_pdf
+                        'resultados': [("Error", "-", "-", f"Error al procesar: {str(e)}", "-", "-", "-", "-", "-", "Error", "-")],
+                        'ruta_completa': ruta_pdf,
+                        'tiene_error_formato': True
                     }
 
     return resultados_masivos
@@ -111,6 +120,15 @@ def limpiar_certificados_masivo(carpeta_principal, resultados_previos):
         raise ValueError("La ruta seleccionada no es una carpeta válida")
     
     for archivo, datos in resultados_previos.items():
+        # No procesar archivos con error de formato
+        if datos.get('tiene_error_formato', False):
+            resultados_limpieza[archivo] = {
+                'success': False,
+                'error': "No se puede limpiar - PDF con formato incorrecto",
+                'ruta_intentada': datos.get('ruta_completa', '')
+            }
+            continue
+            
         # Usar la ruta completa guardada durante el procesamiento
         if 'ruta_completa' in datos:
             ruta_pdf = datos['ruta_completa']
